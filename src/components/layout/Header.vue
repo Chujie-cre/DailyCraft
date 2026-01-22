@@ -1,6 +1,7 @@
 <template>
   <header class="header">
     <div class="header-left">
+      <img src="/icon.png" alt="DailyCraft" class="logo-icon" />
       <h1 class="logo">DailyCraft</h1>
     </div>
     <div class="header-center">
@@ -46,10 +47,18 @@ const currentDate = computed(() => {
 .header-left {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .logo {
-  font-size: 20px;
+  font-family: 'FZG', sans-serif;
+  font-size: 22px;
   font-weight: 700;
   color: #333;
   margin: 0;

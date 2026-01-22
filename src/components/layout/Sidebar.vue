@@ -1,10 +1,25 @@
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+
+const emit = defineEmits<{
+  (e: 'pageChange', page: string): void;
+}>();
+
+const currentPage = ref('home');
+
+function handlePageChange(page: string) {
+  currentPage.value = page;
+  emit('pageChange', page);
+}
+</script>
+
 <style scoped>
   .radio-input input {
     display: none;
   }
 
   .radio-input {
-    --container_height: 300px;
+    --container_height: 400px;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -43,7 +58,7 @@
   .selection {
     display: none;
     position: absolute;
-    height: calc(var(--container_height) / 3 - 12px);
+    height: calc(var(--container_height) / 4 - 12px);
     z-index: 0;
     inset: 6px;
     border-radius: 10px;
@@ -63,27 +78,32 @@
   }
 
   .radio-input label:nth-child(1):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 0 / 3));
+    transform: translateY(calc(var(--container_height) * 0 / 4));
     background-color: #000000;
   }
 
   .radio-input label:nth-child(2):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 1 / 3));
+    transform: translateY(calc(var(--container_height) * 1 / 4));
     background-color: #1f9cf1;
   }
 
   .radio-input label:nth-child(3):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 2 / 3));
+    transform: translateY(calc(var(--container_height) * 2 / 4));
     background-color: #ff9801;
+  }
+
+  .radio-input label:nth-child(4):has(input:checked) ~ .selection {
+    transform: translateY(calc(var(--container_height) * 3 / 4));
+    background-color: #6b7280;
   }
 </style>
 
 <template>
   <div class="radio-input">
-    <label>
+    <label @click="handlePageChange('home')">
       <input
         value="value-1"
-        checked
+        :checked="currentPage === 'home'"
         name="value-radio"
         id="value-1"
         type="radio"
@@ -140,8 +160,8 @@
 
       <span>首页</span>
     </label>
-    <label>
-      <input value="value-2" name="value-radio" id="value-2" type="radio" />
+    <label @click="handlePageChange('logs')">
+      <input value="value-2" :checked="currentPage === 'logs'" name="value-radio" id="value-2" type="radio" />
       <svg
         viewBox="0 0 256 254"
         xmlns="http://www.w3.org/2000/svg"
@@ -182,8 +202,8 @@
 
       <span>日志</span>
     </label>
-    <label>
-      <input value="value-3" name="value-radio" id="value-3" type="radio" />
+    <label @click="handlePageChange('settings')">
+      <input value="value-3" :checked="currentPage === 'settings'" name="value-radio" id="value-3" type="radio" />
       <svg
         preserveAspectRatio="xMidYMid"
         xmlns="http://www.w3.org/2000/svg"
@@ -218,6 +238,15 @@
         ></path>
       </svg>
       <span>设置</span>
+    </label>
+    <label @click="handlePageChange('about')">
+      <input value="value-4" :checked="currentPage === 'about'" name="value-radio" id="value-4" type="radio" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 16v-4"></path>
+        <path d="M12 8h.01"></path>
+      </svg>
+      <span>关于</span>
     </label>
     <span class="selection"></span>
   </div>
