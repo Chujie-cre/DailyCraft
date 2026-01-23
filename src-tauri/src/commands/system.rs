@@ -1,5 +1,5 @@
 use crate::models::{AppConfig, RawEvent, EventType};
-use crate::services::{StorageService, WindowTracker, get_app_icon};
+use crate::services::{StorageService, WindowTracker, get_app_icon, input_tracker};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::path::PathBuf;
@@ -113,21 +113,21 @@ pub fn set_data_dir(path: String) -> std::result::Result<(), String> {
     Ok(())
 }
 
-/// 记录键盘事件
+/// 记录键盘事件（关联当前应用）
 #[tauri::command]
-pub fn record_keyboard_event(key_count: u32) -> std::result::Result<(), String> {
+pub fn record_keyboard_event(key_count: u32, app: String, window_title: String, exe_path: String) -> std::result::Result<(), String> {
     let config = get_config();
     let storage = StorageService::new(config);
-    let event = RawEvent::keyboard(key_count);
+    let event = RawEvent::keyboard(key_count, app, window_title, exe_path);
     storage.append_raw_event(&event).map_err(|e| e.to_string())
 }
 
-/// 记录鼠标事件
+/// 记录鼠标事件（关联当前应用）
 #[tauri::command]
-pub fn record_mouse_event(distance: f64, click_count: u32) -> std::result::Result<(), String> {
+pub fn record_mouse_event(distance: f64, click_count: u32, app: String, window_title: String, exe_path: String) -> std::result::Result<(), String> {
     let config = get_config();
     let storage = StorageService::new(config);
-    let event = RawEvent::mouse(distance, click_count);
+    let event = RawEvent::mouse(distance, click_count, app, window_title, exe_path);
     storage.append_raw_event(&event).map_err(|e| e.to_string())
 }
 
@@ -143,9 +143,15 @@ pub fn record_idle_event(duration_sec: u64) -> std::result::Result<(), String> {
 /// 获取当日所有事件（按类型分组，供Flow画布使用）
 #[tauri::command]
 pub fn get_today_events_grouped() -> std::result::Result<GroupedEvents, String> {
+    get_events_grouped_by_date(chrono::Local::now().format("%Y-%m-%d").to_string())
+}
+
+/// 获取指定日期的事件（按类型分组）
+#[tauri::command]
+pub fn get_events_grouped_by_date(date: String) -> std::result::Result<GroupedEvents, String> {
     let config = get_config();
     let storage = StorageService::new(config);
-    let events = storage.read_raw_events().map_err(|e| e.to_string())?;
+    let events = storage.read_raw_events_by_date(&date).map_err(|e| e.to_string())?;
     
     let mut grouped = GroupedEvents {
         app_focus: Vec::new(),
@@ -214,4 +220,44 @@ pub fn get_today_events() -> std::result::Result<Vec<EventForDisplay>, String> {
         .collect();
     
     Ok(displays)
+}
+
+/// 输入统计数据结构
+#[derive(Serialize)]
+pub struct InputStatsResponse {
+    pub key_count: u32,
+    pub click_count: u32,
+    pub mouse_distance: f64,
+    pub idle_seconds: u64,
+}
+
+/// 启动全局输入监听
+#[tauri::command]
+pub fn start_input_listening() -> std::result::Result<(), String> {
+    input_tracker::start_listening();
+    Ok(())
+}
+
+/// 获取输入统计并重置计数器
+#[tauri::command]
+pub fn get_input_stats() -> InputStatsResponse {
+    let stats = input_tracker::get_and_reset_stats();
+    InputStatsResponse {
+        key_count: stats.key_count,
+        click_count: stats.click_count,
+        mouse_distance: stats.mouse_distance,
+        idle_seconds: stats.idle_seconds,
+    }
+}
+
+/// 获取当前空闲时间（秒）
+#[tauri::command]
+pub fn get_idle_seconds() -> u64 {
+    input_tracker::get_idle_seconds()
+}
+
+/// 检查输入监听是否运行中
+#[tauri::command]
+pub fn is_input_listening() -> bool {
+    input_tracker::is_listening()
 }

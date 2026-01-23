@@ -68,12 +68,21 @@ impl StorageService {
 
     /// 读取当日所有原始事件
     pub fn read_raw_events(&self) -> Result<Vec<RawEvent>> {
-        let path = self.config.get_raw_events_path();
+        self.read_raw_events_by_path(&self.config.get_raw_events_path())
+    }
+    
+    /// 读取指定日期的原始事件
+    pub fn read_raw_events_by_date(&self, date: &str) -> Result<Vec<RawEvent>> {
+        self.read_raw_events_by_path(&self.config.get_raw_events_path_by_date(date))
+    }
+    
+    /// 读取指定路径的原始事件
+    fn read_raw_events_by_path(&self, path: &std::path::PathBuf) -> Result<Vec<RawEvent>> {
         if !path.exists() {
             return Ok(Vec::new());
         }
 
-        let file = File::open(&path)?;
+        let file = File::open(path)?;
         let reader = BufReader::new(file);
         let mut events = Vec::new();
 
