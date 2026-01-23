@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { activityApi } from '@/api/activity';
@@ -136,7 +136,7 @@ async function checkApiKey() {
 async function getDateData(date: string) {
   try {
     // 获取活动数据
-    let events = { app_focus: [], keyboard: [], mouse: [], idle: [] };
+    let events: { app_focus: any[]; keyboard: any[]; mouse: any[]; idle: any[] } = { app_focus: [], keyboard: [], mouse: [], idle: [] };
     try {
       events = await activityApi.getGroupedEventsByDate(date);
     } catch (e) {
@@ -272,11 +272,6 @@ ${JSON.stringify(dateData, null, 2)}
     }
     isLoading.value = false;
   }
-}
-
-// 清空对话（创建新会话）
-function clearChat() {
-  createNewSession();
 }
 
 // 处理回车发送
