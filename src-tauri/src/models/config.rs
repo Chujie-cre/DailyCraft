@@ -23,7 +23,8 @@ impl Default for AppConfig {
         Self {
             data_dir: dirs::data_local_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join("DailyCraft"),
+                .join("DailyCraft")
+                .join("data"),
             screenshot_blacklist: vec![
                 "1Password".to_string(),
                 "Bitwarden".to_string(),
@@ -43,10 +44,20 @@ impl AppConfig {
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
         self.data_dir.join(&today)
     }
+    
+    /// 获取指定日期的数据目录
+    pub fn get_date_dir(&self, date: &str) -> PathBuf {
+        self.data_dir.join(date)
+    }
 
     /// 获取原始事件日志路径
     pub fn get_raw_events_path(&self) -> PathBuf {
         self.get_today_dir().join("raw_events.jsonl")
+    }
+    
+    /// 获取指定日期的原始事件日志路径
+    pub fn get_raw_events_path_by_date(&self, date: &str) -> PathBuf {
+        self.get_date_dir(date).join("raw_events.jsonl")
     }
 
     /// 获取状态段文件路径
