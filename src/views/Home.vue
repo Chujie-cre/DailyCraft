@@ -256,6 +256,24 @@ onUnmounted(() => {
 <template>
   <div class="home">
     <div class="home-content">
+      <!-- 欢迎模块 -->
+      <div class="welcome-section">
+        <div class="welcome-content">
+          <div class="welcome-icon">
+            <img src="/icon.png" alt="DailyCraft" />
+          </div>
+          <div class="welcome-text">
+            <h2>欢迎使用 DailyCraft</h2>
+            <p class="welcome-desc">
+              DailyCraft 是一款 AI 可视化日志分析软件，通过监控您的电脑操作，以可拖拽小卡片的形式记录每个时间段的活动数据，并在一天结束后由 AI 自动生成日记总结。
+            </p>
+            <p class="welcome-thanks">
+              感谢您使用本软件，希望它能帮助您更好地了解自己的工作习惯和时间分配。
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-header">
@@ -355,6 +373,56 @@ onUnmounted(() => {
 
 .home-content {
   padding: 20px;
+}
+
+/* 欢迎模块 */
+.welcome-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px 24px;
+  margin-bottom: 24px;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.welcome-icon {
+  flex-shrink: 0;
+}
+
+.welcome-icon img {
+  width: 64px;
+  height: 64px;
+}
+
+.welcome-text {
+  max-width: 600px;
+}
+
+.welcome-text h2 {
+  margin: 0 0 12px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.welcome-desc {
+  margin: 0 0 8px 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.welcome-thanks {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #9ca3af;
 }
 
 .stats-row {
