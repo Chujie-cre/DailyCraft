@@ -3,6 +3,28 @@ use std::fs;
 use std::path::PathBuf;
 use crate::models::AppConfig;
 
+fn get_chat_history_path() -> PathBuf {
+    let config = AppConfig::load();
+    fs::create_dir_all(&config.data_dir).ok();
+    config.data_dir.join("chat_history.json")
+}
+
+#[tauri::command]
+pub fn save_chat_history(sessions: String) -> Result<(), String> {
+    let path = get_chat_history_path();
+    fs::write(&path, sessions).map_err(|e| format!("保存对话历史失败: {}", e))
+}
+
+#[tauri::command]
+pub fn load_chat_history() -> Result<String, String> {
+    let path = get_chat_history_path();
+    if path.exists() {
+        fs::read_to_string(&path).map_err(|e| format!("加载对话历史失败: {}", e))
+    } else {
+        Ok("[]".to_string())
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AIConfig {
     pub api_key: String,
@@ -91,6 +113,156 @@ pub async fn generate_diary(activities_json: String, prompt: String) -> Result<S
             role: "user".to_string(),
             content: full_prompt,
         }],
+    };
+    
+    let client = reqwest::Client::new();
+    let response = client
+        .post(format!("{}/chat/completions", config.base_url))
+        .header("Authorization", format!("Bearer {}", config.api_key))
+        .header("Content-Type", "application/json")
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {}", e))?;
+    
+    if !response.status().is_success() {
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(format!("API请求失败: {}", error_text));
+    }
+    
+    let chat_response: ChatResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("解析响应失败: {}", e))?;
+    
+    chat_response
+        .choices
+        .first()
+        .map(|c| c.message.content.clone())
+        .ok_or_else(|| "AI未返回内容".to_string())
+}
+
+#[tauri::command]
+pub async fn ai_chat_stream(
+    app: tauri::AppHandle,
+    system_prompt: String,
+    user_message: String
+) -> Result<(), String> {
+    use futures_util::StreamExt;
+    use tauri::Emitter;
+    
+    let config = get_ai_config().await?;
+    
+    if config.api_key.is_empty() {
+        return Err("请先配置API Key".to_string());
+    }
+    
+    #[derive(serde::Serialize)]
+    struct StreamChatRequest {
+        model: String,
+        messages: Vec<ChatMessage>,
+        stream: bool,
+    }
+    
+    #[derive(serde::Deserialize)]
+    struct Delta {
+        content: Option<String>,
+    }
+    
+    #[derive(serde::Deserialize)]
+    struct StreamChoice {
+        delta: Delta,
+    }
+    
+    #[derive(serde::Deserialize)]
+    struct StreamChunk {
+        choices: Vec<StreamChoice>,
+    }
+    
+    let request = StreamChatRequest {
+        model: config.model,
+        messages: vec![
+            ChatMessage {
+                role: "system".to_string(),
+                content: system_prompt,
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: user_message,
+            },
+        ],
+        stream: true,
+    };
+    
+    let client = reqwest::Client::new();
+    let response = client
+        .post(format!("{}/chat/completions", config.base_url))
+        .header("Authorization", format!("Bearer {}", config.api_key))
+        .header("Content-Type", "application/json")
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {}", e))?;
+    
+    if !response.status().is_success() {
+        let error_text = response.text().await.unwrap_or_default();
+        let _ = app.emit("chat-error", error_text.clone());
+        return Err(format!("API请求失败: {}", error_text));
+    }
+    
+    let mut stream = response.bytes_stream();
+    
+    while let Some(chunk_result) = stream.next().await {
+        match chunk_result {
+            Ok(chunk) => {
+                let text = String::from_utf8_lossy(&chunk);
+                for line in text.lines() {
+                    if line.starts_with("data: ") {
+                        let data = &line[6..];
+                        if data == "[DONE]" {
+                            break;
+                        }
+                        if let Ok(chunk_data) = serde_json::from_str::<StreamChunk>(data) {
+                            if let Some(choice) = chunk_data.choices.first() {
+                                if let Some(content) = &choice.delta.content {
+                                    let _ = app.emit("chat-chunk", content.clone());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                let _ = app.emit("chat-error", e.to_string());
+                return Err(e.to_string());
+            }
+        }
+    }
+    
+    let _ = app.emit("chat-complete", ());
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn ai_chat(system_prompt: String, user_message: String) -> Result<String, String> {
+    let config = get_ai_config().await?;
+    
+    if config.api_key.is_empty() {
+        return Err("请先配置API Key".to_string());
+    }
+    
+    let request = ChatRequest {
+        model: config.model,
+        messages: vec![
+            ChatMessage {
+                role: "system".to_string(),
+                content: system_prompt,
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: user_message,
+            },
+        ],
     };
     
     let client = reqwest::Client::new();

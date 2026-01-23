@@ -48,5 +48,13 @@ export const aiApi = {
 
   async readDiary(date: string): Promise<string> {
     return invoke('read_diary', { date });
+  },
+
+  async chat(systemPrompt: string, userMessage: string): Promise<string> {
+    return invoke('ai_chat', { systemPrompt, userMessage });
+  },
+
+  async chatStream(systemPrompt: string, userMessage: string): Promise<void> {
+    return invoke('ai_chat_stream', { systemPrompt, userMessage });
   }
 };

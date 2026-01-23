@@ -8,6 +8,7 @@ import Settings from "./views/Settings.vue";
 import About from "./views/About.vue";
 import Diary from "./views/Diary.vue";
 import Screenshots from "./views/Screenshots.vue";
+import Chat from "./views/Chat.vue";
 import { activityApi, type AppConfig } from './api/activity';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
@@ -198,6 +199,7 @@ onUnmounted(() => {
         <Dashboard v-else-if="currentPage === 'logs'" />
         <Diary v-else-if="currentPage === 'diary'" />
         <Screenshots v-else-if="currentPage === 'screenshots'" />
+        <Chat v-else-if="currentPage === 'chat'" />
         <Settings v-else-if="currentPage === 'settings'" />
         <About v-else-if="currentPage === 'about'" />
       </main>

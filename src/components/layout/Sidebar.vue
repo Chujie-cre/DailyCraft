@@ -19,7 +19,7 @@ function handlePageChange(page: string) {
   }
 
   .radio-input {
-    --container_height: 576px;
+    --container_height: 672px;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -58,7 +58,7 @@ function handlePageChange(page: string) {
   .selection {
     display: none;
     position: absolute;
-    height: calc(var(--container_height) / 6 - 12px);
+    height: calc(var(--container_height) / 7 - 12px);
     z-index: 0;
     inset: 6px;
     border-radius: 10px;
@@ -77,32 +77,37 @@ function handlePageChange(page: string) {
   }
 
   .radio-input label:nth-child(1):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 0 / 6));
+    transform: translateY(calc(var(--container_height) * 0 / 7));
     background-color: #000000;
   }
 
   .radio-input label:nth-child(2):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 1 / 6));
+    transform: translateY(calc(var(--container_height) * 1 / 7));
     background-color: #1f9cf1;
   }
 
   .radio-input label:nth-child(3):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 2 / 6));
+    transform: translateY(calc(var(--container_height) * 2 / 7));
     background-color: #ff9801;
   }
 
   .radio-input label:nth-child(4):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 3 / 6));
+    transform: translateY(calc(var(--container_height) * 3 / 7));
     background-color: #8b5cf6;
   }
 
   .radio-input label:nth-child(5):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 4 / 6));
-    background-color: #e4a0e3;
+    transform: translateY(calc(var(--container_height) * 4 / 7));
+    background-color: #6366f1;
   }
 
   .radio-input label:nth-child(6):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 5 / 6));
+    transform: translateY(calc(var(--container_height) * 5 / 7));
+    background-color: #e4a0e3;
+  }
+
+  .radio-input label:nth-child(7):has(input:checked) ~ .selection {
+    transform: translateY(calc(var(--container_height) * 6 / 7));
     background-color: #b7f089;
   }
 </style>
@@ -227,6 +232,13 @@ function handlePageChange(page: string) {
         <polyline points="21 15 16 10 5 21"></polyline>
       </svg>
       <span>截图</span>
+    </label>
+    <label @click="handlePageChange('chat')">
+      <input value="value-chat" :checked="currentPage === 'chat'" name="value-radio" id="value-chat" type="radio" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span>对话</span>
     </label>
     <label @click="handlePageChange('settings')">
       <input value="value-3" :checked="currentPage === 'settings'" name="value-radio" id="value-3" type="radio" />
