@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 const version = ref('0.1.0');
 const description = ref('AI可视化日志分析软件，帮助您追踪每日活动并生成智能日记。');
@@ -11,8 +12,8 @@ const contactForm = ref({
 const isSubmitting = ref(false);
 const submitSuccess = ref(false);
 
-function openLink(url: string) {
-  window.open(url, '_blank');
+async function openLink(url: string) {
+  await openUrl(url);
 }
 
 async function submitContact() {
@@ -64,15 +65,15 @@ async function submitContact() {
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           检查更新
         </button>
-        <button class="btn btn-secondary" @click="openLink('https://github.com')">
+        <button class="btn btn-secondary" @click="openLink('https://github.com/Chujie-cre/DailyCraft')">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
           GitHub
         </button>
-        <button class="btn btn-secondary">
+        <button class="btn btn-secondary" @click="openLink('https://qm.qq.com/q/138242208')">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           QQ群
         </button>
-        <button class="btn btn-secondary">
+        <button class="btn btn-secondary" @click="openLink('https://space.bilibili.com/1432594578')">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
           Bilibili
         </button>
@@ -80,19 +81,19 @@ async function submitContact() {
 
       <div class="two-column-layout">
         <div class="about-links">
-          <div class="link-item" @click="openLink('https://github.com')">
+          <div class="link-item" @click="openLink('https://github.com/Chujie-cre/DailyCraft')">
             <span class="link-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></span>
             <span class="link-text">给个Star</span>
           </div>
-          <div class="link-item">
+          <div class="link-item" @click="openLink('https://github.com/Chujie-cre/DailyCraft/issues')">
             <span class="link-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></span>
             <span class="link-text">反馈问题</span>
           </div>
-          <div class="link-item">
+          <div class="link-item" @click="openLink('https://github.com/Chujie-cre/DailyCraft/pulls')">
             <span class="link-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></span>
             <span class="link-text">贡献项目</span>
           </div>
-          <div class="link-item">
+          <div class="link-item" @click="openLink('https://afdian.com/a/CJKing')">
             <span class="link-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></span>
             <span class="link-text">赞赏支持</span>
           </div>

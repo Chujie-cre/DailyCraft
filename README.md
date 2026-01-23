@@ -10,8 +10,16 @@
 - **智能截图**: 支持全屏/应用窗口模式，可配置触发条件
 - **OCR识别**: 常驻进程模式的RapidOCR，低CPU占用
 - **AI日记**: 基于OpenAI/兼容API，自动生成每日日记
+- **AI对话**: 支持流式对话，多会话管理，本地历史保存
 - **可视化**: 时间线视图、活动流程图、截图浏览
 - **本地存储**: 数据完全本地化，支持自定义存储路径
+
+## 🚧 开发计划
+
+- [ ] 检查更新功能（GitHub Releases API）
+- [ ] 数据备份导出功能
+- [ ] 数据导入恢复功能
+- [ ] 自动更新安装（tauri-plugin-updater）
 
 ## 🚀 快速开始
 
@@ -31,8 +39,12 @@ npm run tauri build
 ```
 DailyCraft/
 ├── src/              # Vue前端
+│   ├── views/        # 页面组件
+│   ├── components/   # 通用组件
+│   └── api/          # API接口
 ├── src-tauri/        # Rust后端
 │   ├── src/          # 源代码
+│   │   └── commands/ # Tauri命令
 │   └── scripts/      # Python OCR服务
 └── public/           # 静态资源
 ```
