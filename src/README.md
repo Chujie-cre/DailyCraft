@@ -1,78 +1,46 @@
 # DailyCraft 前端架构设计
 
+## 技术栈
+
+- **Vue 3** + Composition API
+- **TypeScript** 类型安全
+- **Vite** 构建工具
+- **VueFlow** 活动流程图
+- **Tauri API** 与后端通信
+
 ## 目录结构
 
 ```
 src/
 ├── main.ts              # 入口文件
-├── App.vue              # 根组件
+├── App.vue              # 根组件（页面切换、截图监听、快捷键）
 ├── vite-env.d.ts        # Vite类型声明
 │
 ├── assets/              # 静态资源
-│   ├── main.css         # 全局样式/TailwindCSS入口
-│   ├── icons/           # 图标资源
-│   └── images/          # 图片资源
+│   └── main.css         # 全局样式
 │
 ├── components/          # 通用组件
 │   ├── common/          # 基础UI组件
-│   │   ├── Button.vue
-│   │   ├── Card.vue
-│   │   ├── Modal.vue
-│   │   └── Input.vue
+│   │   └── ConfirmModal.vue  # 确认弹窗
 │   ├── layout/          # 布局组件
-│   │   ├── Header.vue
-│   │   ├── Sidebar.vue
-│   │   └── Footer.vue
-│   └── activity/        # 活动相关组件
-│       ├── ActivityCard.vue
-│       ├── ActivityTimeline.vue
-│       └── ActivityChart.vue
+│   │   ├── Header.vue   # 顶部导航（日期显示、追踪控制）
+│   │   └── Sidebar.vue  # 侧边栏导航
+│   └── flow/            # 流程图组件
+│       └── ActivityFlow.vue  # 活动流程图（VueFlow）
 │
 ├── views/               # 页面视图
-│   ├── Dashboard.vue    # 仪表盘/首页
-│   ├── Timeline.vue     # 时间线视图
-│   ├── Diary.vue        # 日记视图
-│   ├── Settings.vue     # 设置页面
-│   └── PluginMarket.vue # 插件市场
-│
-├── composables/         # 组合式函数
-│   ├── useActivity.ts   # 活动数据管理
-│   ├── useAI.ts         # AI功能调用
-│   ├── useStorage.ts    # 本地存储
-│   ├── useAuth.ts       # 认证状态(扩展)
-│   └── usePlugin.ts     # 插件管理
-│
-├── stores/              # Pinia状态管理
-│   ├── index.ts
-│   ├── activity.ts      # 活动状态
-│   ├── settings.ts      # 设置状态
-│   ├── user.ts          # 用户状态(扩展)
-│   └── plugin.ts        # 插件状态
+│   ├── Home.vue         # 首页（统计概览、快速操作）
+│   ├── Dashboard.vue    # 日志页（时间线、活动列表）
+│   ├── Screenshots.vue  # 截图页（时间线浏览、OCR查看）
+│   ├── Diary.vue        # 日记页（AI生成、Markdown渲染）
+│   ├── Settings.vue     # 设置页（存储、截图、AI配置）
+│   └── About.vue        # 关于页
 │
 ├── api/                 # Tauri命令封装
-│   ├── index.ts
-│   ├── activity.ts      # 活动相关命令
-│   ├── system.ts        # 系统相关命令
-│   ├── ai.ts            # AI相关命令
-│   └── auth.ts          # 认证命令(扩展)
+│   └── activity.ts      # 活动/截图/OCR相关API
 │
-├── types/               # TypeScript类型
-│   ├── index.ts
-│   ├── activity.ts      # 活动类型
-│   ├── card.ts          # 卡片类型
-│   ├── plugin.ts        # 插件类型
-│   └── api.ts           # API响应类型
-│
-├── utils/               # 工具函数
-│   ├── date.ts          # 日期处理
-│   ├── format.ts        # 格式化
-│   └── validation.ts    # 验证
-│
-├── plugins/             # Vue插件
-│   └── tauri.ts         # Tauri初始化
-│
-└── router/              # 路由配置(可选)
-    └── index.ts
+└── types/               # TypeScript类型
+    └── flow.ts          # VueFlow节点类型
 ```
 
 ## 模块职责
