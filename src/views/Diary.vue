@@ -22,30 +22,36 @@ let unlistenChunk: UnlistenFn | null = null;
 let unlistenComplete: UnlistenFn | null = null;
 let unlistenError: UnlistenFn | null = null;
 
-const defaultPrompt = `你是一个日记助手，请根据以下用户的电脑活动记录和屏幕OCR文字内容，帮我生成一篇简洁、有条理的日记。
+const defaultPrompt = `你是我的日记助手，请根据以下我今天的电脑活动数据，帮我生成一篇日记。
 
 数据说明：
-- activities: 应用使用记录，包括打开的应用、窗口标题等
-- ocr_texts: 截图中识别出的文字内容，可以了解用户具体在做什么
+- date: 日期
+- activities: 应用使用记录（app_focus应用切换、keyboard键盘、mouse鼠标、idle空闲）
+- ocr_texts: 截图OCR识别的文字内容，反映我具体在做什么
+- screenshots: 截图统计
+- input_stats: 输入统计（按键次数、点击次数、鼠标移动距离、空闲时间）
+- summary: 数据汇总
 
 要求：
-1. 用第一人称"我"来写
-2. 结合活动记录和OCR文字内容，总结主要的工作和活动
-3. 按时间顺序组织内容
+1. 以第一人称"我"来写，这是我的日记
+2. 根据应用使用和OCR内容推断我做了什么工作
+3. 按时间顺序组织，突出重点工作内容
 4. 语言自然流畅，像真实的日记
-5. 适当添加对工作效率的反思
-6. 字数控制在300-500字
-7. 使用Markdown格式输出，包括标题、列表、加粗等
+5. 结合输入统计分析我的工作效率
+6. 字数300-500字
+7. 使用Markdown格式
 
-输出格式示例：
-# 今日日记
+输出格式：
+# 📅 {日期} 日记
 
-## 工作内容
-- **项目A**: 完成了xxx
-- **项目B**: 进行了yyy
+## 今日工作
+- **xxx**: 完成了...
 
-## 反思
-今天效率...`;
+## 效率分析
+根据输入统计...
+
+## 小结
+今天...`;
 
 async function checkApiKey() {
   try {
@@ -102,6 +108,7 @@ async function startGeneration() {
   selectedDate.value = today;
   
   try {
+    // 获取所有活动数据
     const events = await activityApi.getGroupedEvents();
     
     // 获取今日OCR数据
@@ -112,14 +119,54 @@ async function startGeneration() {
       console.warn('获取OCR数据失败:', e);
     }
     
-    // 组合活动数据和OCR数据
+    // 获取今日截图列表
+    let screenshots: string[] = [];
+    try {
+      screenshots = await activityApi.getTodayScreenshots();
+    } catch (e) {
+      console.warn('获取截图列表失败:', e);
+    }
+    
+    // 获取输入统计
+    let inputStats = { key_count: 0, click_count: 0, mouse_distance: 0, idle_seconds: 0 };
+    try {
+      inputStats = await activityApi.getInputStats();
+    } catch (e) {
+      console.warn('获取输入统计失败:', e);
+    }
+    
+    // 组合全部数据
     const combinedData = {
-      activities: events,
+      date: today,
+      activities: {
+        app_focus: events.app_focus || [],
+        keyboard: events.keyboard || [],
+        mouse: events.mouse || [],
+        idle: events.idle || []
+      },
       ocr_texts: ocrData.map(item => ({
         time: item.timestamp,
         app: item.app_name,
         content: item.text
-      }))
+      })),
+      screenshots: {
+        count: screenshots.length,
+        files: screenshots.slice(0, 20) // 限制数量避免过长
+      },
+      input_stats: {
+        total_keystrokes: inputStats.key_count,
+        total_clicks: inputStats.click_count,
+        mouse_distance_px: inputStats.mouse_distance,
+        idle_seconds: inputStats.idle_seconds
+      },
+      summary: {
+        app_count: events.app_focus?.length || 0,
+        keyboard_events: events.keyboard?.length || 0,
+        mouse_events: events.mouse?.length || 0,
+        idle_events: events.idle?.length || 0,
+        screenshot_count: screenshots.length,
+        ocr_count: ocrData.length
+      }
     };
     
     const activitiesJson = JSON.stringify(combinedData, null, 2);
