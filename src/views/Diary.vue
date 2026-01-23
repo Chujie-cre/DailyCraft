@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { marked } from 'marked';
 import { activityApi } from '@/api/activity';
-import { aiApi, type DiaryState } from '@/api/ai';
+import { aiApi } from '@/api/ai';
 
 const isGenerating = ref(false);
 const diary = ref('');
@@ -22,11 +22,15 @@ let unlistenChunk: UnlistenFn | null = null;
 let unlistenComplete: UnlistenFn | null = null;
 let unlistenError: UnlistenFn | null = null;
 
-const defaultPrompt = `你是一个日记助手，请根据以下用户的电脑活动记录，帮我生成一篇简洁、有条理的日记。
+const defaultPrompt = `你是一个日记助手，请根据以下用户的电脑活动记录和屏幕OCR文字内容，帮我生成一篇简洁、有条理的日记。
+
+数据说明：
+- activities: 应用使用记录，包括打开的应用、窗口标题等
+- ocr_texts: 截图中识别出的文字内容，可以了解用户具体在做什么
 
 要求：
 1. 用第一人称"我"来写
-2. 总结主要的工作和活动
+2. 结合活动记录和OCR文字内容，总结主要的工作和活动
 3. 按时间顺序组织内容
 4. 语言自然流畅，像真实的日记
 5. 适当添加对工作效率的反思
@@ -93,11 +97,32 @@ async function startGeneration() {
   
   error.value = '';
   diary.value = '';
-  selectedDate.value = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  selectedDate.value = today;
   
   try {
     const events = await activityApi.getGroupedEvents();
-    const activitiesJson = JSON.stringify(events, null, 2);
+    
+    // 获取今日OCR数据
+    let ocrData: any[] = [];
+    try {
+      ocrData = await activityApi.getOcrDataByDate(today);
+    } catch (e) {
+      console.warn('获取OCR数据失败:', e);
+    }
+    
+    // 组合活动数据和OCR数据
+    const combinedData = {
+      activities: events,
+      ocr_texts: ocrData.map(item => ({
+        time: item.timestamp,
+        app: item.app_name,
+        content: item.text
+      }))
+    };
+    
+    const activitiesJson = JSON.stringify(combinedData, null, 2);
     isGenerating.value = true;
     await aiApi.startDiaryGeneration(activitiesJson, defaultPrompt);
   } catch (e: any) {

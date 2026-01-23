@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { activityApi } from '@/api/activity';
+import { diaryApi } from '@/api/diary';
 import VChart from 'vue-echarts';
 import { use } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -12,6 +13,11 @@ use([CanvasRenderer, PieChart, BarChart, LineChart, TitleComponent, TooltipCompo
 // 图表引用
 const pieChartRef = ref<InstanceType<typeof VChart> | null>(null);
 const barChartRef = ref<InstanceType<typeof VChart> | null>(null);
+
+// Dashboard统计数据（前端计算）
+const totalDays = ref(0);
+const todayEvents = ref(0);
+const todayDiary = ref<string | null>(null);
 
 // 窗口resize处理
 let resizeTimer: number | null = null;
@@ -76,7 +82,25 @@ function formatDuration(seconds: number): string {
 
 async function loadStats() {
   try {
-    eventCount.value = await activityApi.getTodayEventCount();
+    // 加载今日事件数
+    todayEvents.value = await activityApi.getTodayEventCount();
+    eventCount.value = todayEvents.value;
+    
+    // 加载日记列表获取总天数
+    try {
+      const diaryList = await diaryApi.getDiaryList();
+      totalDays.value = diaryList.length;
+      
+      // 检查今日是否已生成日记
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      if (diaryList.includes(today)) {
+        todayDiary.value = '已生成 ✓';
+      }
+    } catch (e) {
+      console.warn('加载日记列表失败:', e);
+    }
+    
     const events = await activityApi.getGroupedEvents();
     
     // 统计最近应用，计算使用时长
@@ -235,33 +259,40 @@ onUnmounted(() => {
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-header">
-            <span class="stat-title">本周AI总结:</span>
+            <span class="stat-title">AI日报:</span>
             <span class="stat-menu">⋮</span>
           </div>
-          <div class="stat-main placeholder">暂未实现</div>
+          <div class="stat-main" :class="{ placeholder: !todayDiary }">
+            {{ todayDiary || '今日未生成' }}
+          </div>
         </div>
         <div class="stat-card">
           <div class="stat-header">
-            <span class="stat-title">日志条目:</span>
+            <span class="stat-title">记录总天数:</span>
+            <span class="stat-menu">⋮</span>
+          </div>
+          <div class="stat-main">
+            <span class="stat-number">{{ totalDays }}</span>
+            <span class="stat-unit">天</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-title">今日日志条目:</span>
+            <span class="stat-menu">⋮</span>
+          </div>
+          <div class="stat-main">
+            <span class="stat-number">{{ todayEvents }}</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-title">总日志条目:</span>
             <span class="stat-menu">⋮</span>
           </div>
           <div class="stat-main">
             <span class="stat-number">{{ eventCount }}</span>
           </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-header">
-            <span class="stat-title">情感趋势:</span>
-            <span class="stat-menu">⋮</span>
-          </div>
-          <div class="stat-main placeholder">暂未实现</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-header">
-            <span class="stat-title">记录天数:</span>
-            <span class="stat-menu">⋮</span>
-          </div>
-          <div class="stat-main placeholder">暂未实现</div>
         </div>
       </div>
       
@@ -368,6 +399,13 @@ onUnmounted(() => {
 
 .stat-number {
   font-size: 24px;
+}
+
+.stat-unit {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: normal;
+  margin-left: 4px;
 }
 
 .stat-badge {
