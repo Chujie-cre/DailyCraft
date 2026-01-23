@@ -28,7 +28,8 @@ const nodeColors: Record<string, string> = {
 };
 
 async function loadIcon() {
-  if (props.data.exePath && props.data.eventType === 'app_focus') {
+  // 对于app_focus、keyboard、mouse事件，都加载应用图标
+  if (props.data.exePath && ['app_focus', 'keyboard', 'mouse'].includes(props.data.eventType)) {
     try {
       appIcon.value = await activityApi.getAppIcon(props.data.exePath);
     } catch {
@@ -52,9 +53,31 @@ watch(() => props.data.exePath, loadIcon);
       <span class="icon">
         <img v-if="appIcon" :src="appIcon" alt="" class="app-icon-img" />
         <span v-else-if="data.eventType === 'app_focus'">{{ data.app?.charAt(0)?.toUpperCase() || 'A' }}</span>
-        <span v-else-if="data.eventType === 'keyboard'">⌨️</span>
-        <span v-else-if="data.eventType === 'mouse'">🖱️</span>
-        <span v-else>💤</span>
+        <svg v-else-if="data.eventType === 'keyboard'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+          <path d="M6 8h.001"></path>
+          <path d="M10 8h.001"></path>
+          <path d="M14 8h.001"></path>
+          <path d="M18 8h.001"></path>
+          <path d="M8 12h.001"></path>
+          <path d="M12 12h.001"></path>
+          <path d="M16 12h.001"></path>
+          <path d="M7 16h10"></path>
+        </svg>
+        <svg v-else-if="data.eventType === 'mouse'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="7" ry="7"></rect>
+          <path d="M12 6v4"></path>
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 18a5 5 0 0 0-10 0"></path>
+          <line x1="12" y1="2" x2="12" y2="9"></line>
+          <line x1="4.22" y1="10.22" x2="5.64" y2="11.64"></line>
+          <line x1="1" y1="18" x2="3" y2="18"></line>
+          <line x1="21" y1="18" x2="23" y2="18"></line>
+          <line x1="18.36" y1="11.64" x2="19.78" y2="10.22"></line>
+          <line x1="23" y1="22" x2="1" y2="22"></line>
+          <polyline points="8 6 12 2 16 6"></polyline>
+        </svg>
       </span>
       <span class="time">{{ data.time }}</span>
     </div>

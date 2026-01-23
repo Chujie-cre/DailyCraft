@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import ActivityFlow from '@/components/flow/ActivityFlow.vue';
 import { activityApi, type GroupedEvents, type ActiveWindowInfo } from '@/api/activity';
 
@@ -104,13 +104,25 @@ let refreshInterval: number | null = null;
 
 async function loadEvents() {
   try {
-    events.value = await activityApi.getGroupedEvents();
+    // 根据选择的日期加载事件
+    const today = new Date().toISOString().split('T')[0];
+    if (filterDate.value === today) {
+      events.value = await activityApi.getGroupedEvents();
+    } else {
+      events.value = await activityApi.getGroupedEventsByDate(filterDate.value);
+    }
     eventCount.value = await activityApi.getTodayEventCount();
     currentWindow.value = await activityApi.getActiveWindow();
   } catch (e) {
     console.error('加载事件失败:', e);
   }
 }
+
+// 监听日期变化，重新加载事件
+watch(filterDate, async () => {
+  await loadEvents();
+  currentPage.value = 0; // 切换日期后重置到第一页
+});
 
 onMounted(async () => {
   await loadEvents();
