@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 use tauri::{AppHandle, Emitter};
+use crate::models::AppConfig;
 
 static IS_GENERATING: AtomicBool = AtomicBool::new(false);
 static CURRENT_DIARY: Lazy<Mutex<DiaryState>> = Lazy::new(|| Mutex::new(DiaryState::default()));
@@ -17,14 +18,16 @@ pub struct DiaryState {
     pub date: String,
 }
 
-fn get_diary_dir() -> PathBuf {
-    let data_dir = dirs::data_local_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("DailyCraft")
-        .join("data")
-        .join("diaries");
+fn get_diary_dir(date: &str) -> PathBuf {
+    let config = AppConfig::load();
+    let data_dir = config.data_dir.join(date);
     fs::create_dir_all(&data_dir).ok();
     data_dir
+}
+
+fn get_data_root() -> PathBuf {
+    let config = AppConfig::load();
+    config.data_dir
 }
 
 #[tauri::command]
@@ -281,8 +284,8 @@ async fn generate_diary_stream(
 }
 
 fn save_diary_to_file(date: &str, content: &str) -> Result<PathBuf, String> {
-    let diary_dir = get_diary_dir();
-    let file_path = diary_dir.join(format!("{}.md", date));
+    let diary_dir = get_diary_dir(date);
+    let file_path = diary_dir.join("diary.md");
     
     let markdown_content = format!(
         "# {} 日记\n\n{}\n\n---\n*由 DailyCraft AI 自动生成*\n",
@@ -303,14 +306,19 @@ pub fn save_diary(date: String, content: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn get_diary_list() -> Result<Vec<String>, String> {
-    let diary_dir = get_diary_dir();
+    let data_root = get_data_root();
     let mut diaries = Vec::new();
     
-    if let Ok(entries) = fs::read_dir(&diary_dir) {
+    if let Ok(entries) = fs::read_dir(&data_root) {
         for entry in entries.flatten() {
-            if let Some(name) = entry.file_name().to_str() {
-                if name.ends_with(".md") {
-                    diaries.push(name.trim_end_matches(".md").to_string());
+            let path = entry.path();
+            // 检查是否是日期目录（包含diary.md文件）
+            if path.is_dir() {
+                if let Some(name) = entry.file_name().to_str() {
+                    let diary_file = path.join("diary.md");
+                    if diary_file.exists() {
+                        diaries.push(name.to_string());
+                    }
                 }
             }
         }
@@ -322,9 +330,92 @@ pub fn get_diary_list() -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub fn read_diary(date: String) -> Result<String, String> {
-    let diary_dir = get_diary_dir();
-    let file_path = diary_dir.join(format!("{}.md", date));
+    let diary_dir = get_diary_dir(&date);
+    let file_path = diary_dir.join("diary.md");
     
     fs::read_to_string(&file_path)
         .map_err(|e| format!("读取日记失败: {}", e))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DashboardStats {
+    pub total_days: u32,
+    pub today_events: u32,
+    pub total_events: u32,
+    pub today_diary: Option<String>,
+}
+
+#[tauri::command]
+pub fn get_dashboard_stats() -> Result<DashboardStats, String> {
+    let data_root = get_data_root();
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    
+    let mut total_days = 0u32;
+    let mut total_events = 0u32;
+    let mut today_events = 0u32;
+    let mut today_diary: Option<String> = None;
+    
+    // 遍历数据目录统计
+    if let Ok(entries) = fs::read_dir(&data_root) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(date_str) = entry.file_name().to_str() {
+                    // 检查是否有events.db文件
+                    let db_path = path.join("events.db");
+                    if db_path.exists() {
+                        total_days += 1;
+                        
+                        // 统计该日期的事件数量
+                        if let Ok(conn) = rusqlite::Connection::open(&db_path) {
+                            let result: Result<i64, _> = conn.query_row(
+                                "SELECT COUNT(*) FROM events",
+                                [],
+                                |row| row.get(0)
+                            );
+                            if let Ok(count) = result {
+                                total_events += count as u32;
+                                if date_str == today {
+                                    today_events = count as u32;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 检查今日日记
+                    if date_str == today {
+                        let diary_path = path.join("diary.md");
+                        if diary_path.exists() {
+                            if let Ok(content) = fs::read_to_string(&diary_path) {
+                                // 提取日记摘要（去除markdown标题等）
+                                let summary: String = content
+                                    .lines()
+                                    .filter(|l| !l.starts_with('#') && !l.starts_with('*') && !l.starts_with('-') && !l.trim().is_empty())
+                                    .take(1)
+                                    .collect::<Vec<_>>()
+                                    .join(" ");
+                                if !summary.is_empty() {
+                                    let truncated = if summary.len() > 50 {
+                                        format!("{}...", &summary[..50])
+                                    } else {
+                                        summary
+                                    };
+                                    today_diary = Some(truncated);
+                                } else {
+                                    today_diary = Some("已生成".to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(DashboardStats {
+        total_days,
+        today_events,
+        total_events,
+        today_diary,
+    })
 }

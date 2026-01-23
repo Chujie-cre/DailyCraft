@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use crate::models::AppConfig;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AIConfig {
@@ -42,12 +43,9 @@ struct ChatResponse {
 }
 
 fn get_ai_config_path() -> PathBuf {
-    let data_dir = dirs::data_local_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("DailyCraft")
-        .join("data");
-    fs::create_dir_all(&data_dir).ok();
-    data_dir.join("ai_config.json")
+    let config = AppConfig::load();
+    fs::create_dir_all(&config.data_dir).ok();
+    config.data_dir.join("ai_config.json")
 }
 
 #[tauri::command]
