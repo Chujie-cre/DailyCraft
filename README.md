@@ -4,6 +4,20 @@
 
 **技术栈**: Tauri 2.0 + Vue 3 + TypeScript + Rust
 
+## 📸 应用截图
+
+| 首页 | 活动日志 |
+|:---:|:---:|
+| ![首页](public/docs_img/home.png) | ![日志](public/docs_img/logs.png) |
+
+| AI日记 | AI对话 |
+|:---:|:---:|
+| ![AI日记](public/docs_img/AI_note.png) | ![AI对话](public/docs_img/AI_talk.png) |
+
+| 视频帧管理 |
+|:---:|
+| ![截图](public/docs_img/img_get.png) |
+
 ## ✨ 功能特性
 
 - **活动监控**: 自动追踪应用使用、窗口切换、键鼠活动
@@ -23,7 +37,32 @@
 
 ## 🚀 快速开始
 
+### 环境准备
+
+1. **Python 3.x** - OCR功能依赖
+   ```bash
+   # 安装OCR依赖
+   pip install rapidocr_onnxruntime
+   ```
+
+2. **Rust 1.70+** - 后端编译
+   ```bash
+   # 安装Rust: https://rustup.rs/
+   rustup update stable
+   ```
+
+3. **Node.js 18+** - 前端开发
+   ```bash
+   # 推荐使用 nvm 管理Node版本
+   ```
+
+### 运行项目
+
 ```bash
+# 克隆项目
+git clone https://github.com/Chujie-cre/DailyCraft.git
+cd DailyCraft
+
 # 安装依赖
 npm install
 
@@ -55,12 +94,34 @@ DailyCraft/
 - **截图模式**: 全屏(full_screen) / 应用窗口(app_window)
 - **AI配置**: 设置 > AI配置 > API Key / Base URL
 
-## 📦 依赖
+## 🤝 参与贡献
 
-- Python 3.x + `rapidocr_onnxruntime` (OCR功能)
-- Rust 1.70+ (后端编译)
-- Node.js 18+ (前端开发)
+欢迎参与项目开发！
+
+1. **Fork** 本仓库
+2. 创建特性分支: `git checkout -b feature/your-feature`
+3. 提交更改: `git commit -m 'feat: add some feature'`
+4. 推送分支: `git push origin feature/your-feature`
+5. 提交 **Pull Request**
+
+### 提交规范
+
+- `feat`: 新功能
+- `fix`: 修复Bug
+- `docs`: 文档更新
+- `style`: 代码格式调整
+- `refactor`: 代码重构
+- `test`: 测试相关
+- `chore`: 构建/工具相关
+
+### 反馈问题
+
+遇到问题？请在 [Issues](https://github.com/Chujie-cre/DailyCraft/issues) 中反馈。
 
 ## 📄 版本
 
 v0.1.0 - 开发测试中
+
+## 📜 许可证
+
+MIT License
