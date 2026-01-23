@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 
 const emit = defineEmits<{
   (e: 'pageChange', page: string): void;
@@ -19,7 +19,7 @@ function handlePageChange(page: string) {
   }
 
   .radio-input {
-    --container_height: 480px;
+    --container_height: 576px;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -58,7 +58,7 @@ function handlePageChange(page: string) {
   .selection {
     display: none;
     position: absolute;
-    height: calc(var(--container_height) / 5 - 12px);
+    height: calc(var(--container_height) / 6 - 12px);
     z-index: 0;
     inset: 6px;
     border-radius: 10px;
@@ -77,27 +77,32 @@ function handlePageChange(page: string) {
   }
 
   .radio-input label:nth-child(1):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 0 / 5));
+    transform: translateY(calc(var(--container_height) * 0 / 6));
     background-color: #000000;
   }
 
   .radio-input label:nth-child(2):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 1 / 5));
+    transform: translateY(calc(var(--container_height) * 1 / 6));
     background-color: #1f9cf1;
   }
 
   .radio-input label:nth-child(3):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 2 / 5));
+    transform: translateY(calc(var(--container_height) * 2 / 6));
     background-color: #ff9801;
   }
 
   .radio-input label:nth-child(4):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 3 / 5));
-    background-color: #e4a0e3;
+    transform: translateY(calc(var(--container_height) * 3 / 6));
+    background-color: #8b5cf6;
   }
 
   .radio-input label:nth-child(5):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 4 / 5));
+    transform: translateY(calc(var(--container_height) * 4 / 6));
+    background-color: #e4a0e3;
+  }
+
+  .radio-input label:nth-child(6):has(input:checked) ~ .selection {
+    transform: translateY(calc(var(--container_height) * 5 / 6));
     background-color: #b7f089;
   }
 </style>
@@ -213,6 +218,15 @@ function handlePageChange(page: string) {
         <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
       </svg>
       <span>日记</span>
+    </label>
+    <label @click="handlePageChange('screenshots')">
+      <input value="value-screenshots" :checked="currentPage === 'screenshots'" name="value-radio" id="value-screenshots" type="radio" />
+      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <polyline points="21 15 16 10 5 21"></polyline>
+      </svg>
+      <span>截图</span>
     </label>
     <label @click="handlePageChange('settings')">
       <input value="value-3" :checked="currentPage === 'settings'" name="value-radio" id="value-3" type="radio" />

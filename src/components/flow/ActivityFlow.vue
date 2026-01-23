@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { VueFlow, useVueFlow } from '@vue-flow/core';
+import { computed, ref } from 'vue';
+import { VueFlow } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import '@vue-flow/core/dist/style.css';
@@ -386,16 +386,6 @@ const edges = computed(() => {
   
   return result;
 });
-
-function getCategoryColor(key: string): string {
-  const colors: Record<string, string> = {
-    app_focus: '#3b82f6',
-    keyboard: '#22c55e',
-    mouse: '#f59e0b',
-    idle: '#6b7280',
-  };
-  return colors[key] || '#888';
-}
 
 function getEventLabel(event: EventForDisplay): string {
   switch (event.event_type) {

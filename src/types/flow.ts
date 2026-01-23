@@ -1,4 +1,4 @@
-import type { Node, Edge } from '@vue-flow/core';
+import type { Node } from '@vue-flow/core';
 
 export interface ActivityNode extends Node {
   data: {
@@ -13,7 +13,7 @@ export interface ActivityNode extends Node {
   };
 }
 
-export interface ActivityEdge extends Edge {
+export interface ActivityEdge {
   data?: {
     duration?: string;
   };

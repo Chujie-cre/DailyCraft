@@ -7,7 +7,9 @@ import Dashboard from "./views/Dashboard.vue";
 import Settings from "./views/Settings.vue";
 import About from "./views/About.vue";
 import Diary from "./views/Diary.vue";
-import { activityApi } from './api/activity';
+import Screenshots from "./views/Screenshots.vue";
+import { activityApi, type AppConfig } from './api/activity';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
 const currentPage = ref('home');
 
@@ -18,15 +20,39 @@ function handlePageChange(page: string) {
 // 全局追踪逻辑
 let trackingInterval: number | null = null;
 let idleCheckInterval: number | null = null;
+let screenshotInterval: number | null = null;
+let configUnlisten: UnlistenFn | null = null;
 let lastApp = '';
 let lastTitle = '';
 let lastExePath = '';
-let lastIdleRecorded = 0; // 上次记录的空闲秒数
-const IDLE_THRESHOLD = 300; // 5分钟空闲阈值（秒）
+let lastIdleRecorded = 0;
+let appStayStartTime = 0; // 应用停留开始时间
+let lastScreenshotTime = 0; // 上次截图时间
+
+// 配置（从后端加载）
+let appConfig: AppConfig = {
+  poll_interval_ms: 1000,
+  idle_threshold_sec: 300,
+  screenshot_enabled: false,
+  screenshot_trigger_sec: 30,
+  screenshot_interval_sec: 60,
+  screenshot_mode: 'full_screen',
+  screenshot_hotkey: 'Alt+]'
+};
+
+async function loadConfig() {
+  try {
+    appConfig = await activityApi.getAppConfig();
+  } catch (e) {
+    console.error('加载配置失败:', e);
+  }
+}
 
 async function pollActiveWindow() {
   try {
     const info = await activityApi.getActiveWindow();
+    const now = Date.now();
+    
     // 只在应用切换时记录
     if (info.app_name !== lastApp || info.window_title !== lastTitle) {
       // 先记录上一个应用的输入统计（如果有）
@@ -39,9 +65,42 @@ async function pollActiveWindow() {
       lastApp = info.app_name;
       lastTitle = info.window_title;
       lastExePath = info.exe_path;
+      
+      // 重置应用停留计时
+      appStayStartTime = now;
+      lastScreenshotTime = 0;
+    }
+    
+    // 自动截图逻辑
+    if (appConfig.screenshot_enabled && lastApp) {
+      const stayDuration = (now - appStayStartTime) / 1000;
+      const sinceLastScreenshot = lastScreenshotTime ? (now - lastScreenshotTime) / 1000 : Infinity;
+      
+      // 首次截图：停留时间超过触发阈值
+      if (stayDuration >= appConfig.screenshot_trigger_sec && lastScreenshotTime === 0) {
+        await takeAutoScreenshot();
+        lastScreenshotTime = now;
+      }
+      // 后续截图：间隔时间到达
+      else if (lastScreenshotTime > 0 && sinceLastScreenshot >= appConfig.screenshot_interval_sec) {
+        await takeAutoScreenshot();
+        lastScreenshotTime = now;
+      }
     }
   } catch (e) {
     console.error('追踪失败:', e);
+  }
+}
+
+// 自动截图
+async function takeAutoScreenshot() {
+  try {
+    const result = await activityApi.takeScreenshot(lastApp);
+    if (!result.success) {
+      // 静默失败
+    }
+  } catch (e) {
+    console.error('截图异常:', e);
   }
 }
 
@@ -69,10 +128,10 @@ async function checkIdleStatus() {
   try {
     const idleSeconds = await activityApi.getIdleSeconds();
     // 当空闲超过阈值且与上次记录不同时记录
-    if (idleSeconds >= IDLE_THRESHOLD && idleSeconds !== lastIdleRecorded) {
+    if (idleSeconds >= appConfig.idle_threshold_sec && idleSeconds !== lastIdleRecorded) {
       await activityApi.recordIdle(idleSeconds);
       lastIdleRecorded = idleSeconds;
-    } else if (idleSeconds < IDLE_THRESHOLD) {
+    } else if (idleSeconds < appConfig.idle_threshold_sec) {
       lastIdleRecorded = 0; // 重置
     }
   } catch (e) {
@@ -82,16 +141,33 @@ async function checkIdleStatus() {
 
 function startGlobalTracking() {
   pollActiveWindow();
-  trackingInterval = window.setInterval(pollActiveWindow, 1000);
+  // 使用配置的检查间隔
+  trackingInterval = window.setInterval(pollActiveWindow, appConfig.poll_interval_ms);
   // 每30秒检查一次空闲状态
   idleCheckInterval = window.setInterval(checkIdleStatus, 30000);
 }
 
+// 重启追踪（配置变更后调用）
+function restartTracking() {
+  if (trackingInterval) {
+    clearInterval(trackingInterval);
+  }
+  trackingInterval = window.setInterval(pollActiveWindow, appConfig.poll_interval_ms);
+}
+
 onMounted(async () => {
+  // 先加载配置
+  await loadConfig();
   await activityApi.initTodayStorage();
   // 启动全局输入监听
   await activityApi.startInputListening();
   startGlobalTracking();
+  
+  // 监听配置变更事件
+  configUnlisten = await listen<AppConfig>('config-changed', (event) => {
+    appConfig = event.payload;
+    restartTracking();
+  });
 });
 
 onUnmounted(() => {
@@ -100,6 +176,12 @@ onUnmounted(() => {
   }
   if (idleCheckInterval) {
     clearInterval(idleCheckInterval);
+  }
+  if (screenshotInterval) {
+    clearInterval(screenshotInterval);
+  }
+  if (configUnlisten) {
+    configUnlisten();
   }
 });
 </script>
@@ -115,6 +197,7 @@ onUnmounted(() => {
         <Home v-if="currentPage === 'home'" />
         <Dashboard v-else-if="currentPage === 'logs'" />
         <Diary v-else-if="currentPage === 'diary'" />
+        <Screenshots v-else-if="currentPage === 'screenshots'" />
         <Settings v-else-if="currentPage === 'settings'" />
         <About v-else-if="currentPage === 'about'" />
       </main>
