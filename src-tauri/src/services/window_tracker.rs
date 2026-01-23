@@ -9,6 +9,15 @@ pub struct WindowInfo {
     pub exe_path: String,
 }
 
+/// 窗口矩形区域
+#[derive(Debug, Clone)]
+pub struct WindowRect {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
+
 /// 窗口追踪服务
 pub struct WindowTracker;
 
@@ -95,6 +104,42 @@ impl WindowTracker {
     /// macOS/Linux 占位实现
     #[cfg(not(target_os = "windows"))]
     pub fn get_active_window(&self) -> Result<WindowInfo> {
+        Err(AppError::WindowTracker(
+            "Window tracking not implemented for this platform".to_string(),
+        ))
+    }
+
+    /// 获取当前活动窗口的位置和大小
+    #[cfg(target_os = "windows")]
+    pub fn get_active_window_rect(&self) -> Result<WindowRect> {
+        use windows::Win32::Foundation::{HWND, RECT};
+        use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+        use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+
+        unsafe {
+            let hwnd: HWND = GetForegroundWindow();
+            if hwnd.0 == std::ptr::null_mut() {
+                return Err(AppError::WindowTracker("No active window".to_string()));
+            }
+
+            let mut rect: RECT = std::mem::zeroed();
+            if GetWindowRect(hwnd, &mut rect).is_ok() {
+                let width = (rect.right - rect.left).max(0) as u32;
+                let height = (rect.bottom - rect.top).max(0) as u32;
+                Ok(WindowRect {
+                    x: rect.left,
+                    y: rect.top,
+                    width,
+                    height,
+                })
+            } else {
+                Err(AppError::WindowTracker("Failed to get window rect".to_string()))
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    pub fn get_active_window_rect(&self) -> Result<WindowRect> {
         Err(AppError::WindowTracker(
             "Window tracking not implemented for this platform".to_string(),
         ))
