@@ -1,9 +1,9 @@
 use once_cell::sync::Lazy;
 use rdev::{listen, Event, EventType};
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Mutex;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// 全局输入统计
 static KEY_COUNT: AtomicU32 = AtomicU32::new(0);

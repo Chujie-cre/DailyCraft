@@ -1,4 +1,4 @@
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::models::{AppConfig, RawEvent, StateSegment};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};

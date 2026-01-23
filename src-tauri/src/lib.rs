@@ -82,6 +82,15 @@ pub fn run() {
             get_input_stats,
             get_idle_seconds,
             is_input_listening,
+            get_app_config,
+            save_app_config,
+            take_screenshot,
+            take_screenshot_area,
+            get_today_screenshots,
+            get_screenshots_by_date,
+            get_icon_by_app_name,
+            open_folder,
+            clear_cache,
             get_ai_config,
             save_ai_config,
             generate_diary,
@@ -90,7 +99,11 @@ pub fn run() {
             start_diary_generation,
             save_diary,
             get_diary_list,
-            read_diary
+            read_diary,
+            get_dashboard_stats,
+            ocr_image,
+            get_ocr_data_by_date,
+            save_ocr_record
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
