@@ -6,6 +6,7 @@ import Home from "./views/Home.vue";
 import Dashboard from "./views/Dashboard.vue";
 import Settings from "./views/Settings.vue";
 import About from "./views/About.vue";
+import Diary from "./views/Diary.vue";
 import { activityApi } from './api/activity';
 
 const currentPage = ref('home');
@@ -16,35 +17,89 @@ function handlePageChange(page: string) {
 
 // 全局追踪逻辑
 let trackingInterval: number | null = null;
+let idleCheckInterval: number | null = null;
 let lastApp = '';
 let lastTitle = '';
+let lastExePath = '';
+let lastIdleRecorded = 0; // 上次记录的空闲秒数
+const IDLE_THRESHOLD = 300; // 5分钟空闲阈值（秒）
 
 async function pollActiveWindow() {
   try {
     const info = await activityApi.getActiveWindow();
+    // 只在应用切换时记录
     if (info.app_name !== lastApp || info.window_title !== lastTitle) {
+      // 先记录上一个应用的输入统计（如果有）
+      if (lastApp) {
+        await recordInputStatsForApp();
+      }
+      
+      // 记录新的应用焦点
       await activityApi.recordAppFocus(info.app_name, info.window_title, info.exe_path);
       lastApp = info.app_name;
       lastTitle = info.window_title;
+      lastExePath = info.exe_path;
     }
   } catch (e) {
     console.error('追踪失败:', e);
   }
 }
 
+// 在应用切换时记录输入统计
+async function recordInputStatsForApp() {
+  try {
+    const stats = await activityApi.getInputStats();
+    
+    // 记录键盘事件（如果有按键）
+    if (stats.key_count > 0) {
+      await activityApi.recordKeyboard(stats.key_count, lastApp, lastTitle, lastExePath);
+    }
+    
+    // 记录鼠标事件（如果有移动或点击）
+    if (stats.mouse_distance > 0 || stats.click_count > 0) {
+      await activityApi.recordMouse(stats.mouse_distance, stats.click_count, lastApp, lastTitle, lastExePath);
+    }
+  } catch (e) {
+    console.error('输入统计失败:', e);
+  }
+}
+
+// 独立检查空闲状态
+async function checkIdleStatus() {
+  try {
+    const idleSeconds = await activityApi.getIdleSeconds();
+    // 当空闲超过阈值且与上次记录不同时记录
+    if (idleSeconds >= IDLE_THRESHOLD && idleSeconds !== lastIdleRecorded) {
+      await activityApi.recordIdle(idleSeconds);
+      lastIdleRecorded = idleSeconds;
+    } else if (idleSeconds < IDLE_THRESHOLD) {
+      lastIdleRecorded = 0; // 重置
+    }
+  } catch (e) {
+    console.error('空闲检查失败:', e);
+  }
+}
+
 function startGlobalTracking() {
   pollActiveWindow();
   trackingInterval = window.setInterval(pollActiveWindow, 1000);
+  // 每30秒检查一次空闲状态
+  idleCheckInterval = window.setInterval(checkIdleStatus, 30000);
 }
 
 onMounted(async () => {
   await activityApi.initTodayStorage();
+  // 启动全局输入监听
+  await activityApi.startInputListening();
   startGlobalTracking();
 });
 
 onUnmounted(() => {
   if (trackingInterval) {
     clearInterval(trackingInterval);
+  }
+  if (idleCheckInterval) {
+    clearInterval(idleCheckInterval);
   }
 });
 </script>
@@ -59,6 +114,7 @@ onUnmounted(() => {
       <main class="main-content">
         <Home v-if="currentPage === 'home'" />
         <Dashboard v-else-if="currentPage === 'logs'" />
+        <Diary v-else-if="currentPage === 'diary'" />
         <Settings v-else-if="currentPage === 'settings'" />
         <About v-else-if="currentPage === 'about'" />
       </main>
