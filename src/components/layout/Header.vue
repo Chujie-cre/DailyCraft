@@ -5,7 +5,7 @@
       <h1 class="logo">DailyCraft</h1>
     </div>
     <div class="header-center">
-      <span class="date">{{ currentDate }}</span>
+      <span class="date">{{ currentDateTime }}</span>
     </div>
     <div class="header-right">
       <button class="header-btn" @click="handleSettingsClick">
@@ -19,21 +19,43 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
 const emit = defineEmits<{
   (e: 'goToSettings'): void;
 }>();
 
-const currentDate = computed(() => {
+const currentDateTime = ref('');
+let timer: number | null = null;
+
+function updateDateTime() {
   const now = new Date();
-  const options: Intl.DateTimeFormatOptions = { 
+  const dateOptions: Intl.DateTimeFormatOptions = { 
     year: 'numeric', 
     month: 'long', 
     day: 'numeric',
     weekday: 'long'
   };
-  return now.toLocaleDateString('zh-CN', options);
+  const timeOptions: Intl.DateTimeFormatOptions = {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  };
+  const dateStr = now.toLocaleDateString('zh-CN', dateOptions);
+  const timeStr = now.toLocaleTimeString('zh-CN', timeOptions);
+  currentDateTime.value = `${dateStr} ${timeStr}`;
+}
+
+onMounted(() => {
+  updateDateTime();
+  timer = window.setInterval(updateDateTime, 1000);
+});
+
+onUnmounted(() => {
+  if (timer) {
+    clearInterval(timer);
+  }
 });
 
 function handleSettingsClick() {
