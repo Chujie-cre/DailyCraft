@@ -18,7 +18,11 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$LOCALAPPDATA/DailyCraft/**", "C:/**", "D:/**", "E:/**", "F:/**", "G:/**", "H:/**", "K:/**"]
+      }
     }
   },
   "bundle": {

@@ -53,14 +53,14 @@ impl RawEvent {
         }
     }
 
-    /// 创建键盘事件
-    pub fn keyboard(key_count: u32) -> Self {
+    /// 创建键盘事件（关联当前应用）
+    pub fn keyboard(key_count: u32, app: String, window_title: String, exe_path: String) -> Self {
         Self {
             timestamp: Local::now(),
             event_type: EventType::Keyboard,
-            app: None,
-            window_title: None,
-            exe_path: None,
+            app: if app.is_empty() { None } else { Some(app) },
+            window_title: if window_title.is_empty() { None } else { Some(window_title) },
+            exe_path: if exe_path.is_empty() { None } else { Some(exe_path) },
             metadata: EventMetadata {
                 key_count: Some(key_count),
                 ..Default::default()
@@ -68,14 +68,14 @@ impl RawEvent {
         }
     }
 
-    /// 创建鼠标事件
-    pub fn mouse(distance: f64, click_count: u32) -> Self {
+    /// 创建鼠标事件（关联当前应用）
+    pub fn mouse(distance: f64, click_count: u32, app: String, window_title: String, exe_path: String) -> Self {
         Self {
             timestamp: Local::now(),
             event_type: EventType::Mouse,
-            app: None,
-            window_title: None,
-            exe_path: None,
+            app: if app.is_empty() { None } else { Some(app) },
+            window_title: if window_title.is_empty() { None } else { Some(window_title) },
+            exe_path: if exe_path.is_empty() { None } else { Some(exe_path) },
             metadata: EventMetadata {
                 mouse_distance: Some(distance),
                 click_count: Some(click_count),

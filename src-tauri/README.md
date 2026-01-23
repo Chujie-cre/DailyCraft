@@ -1,45 +1,46 @@
 # DailyCraft 后端架构设计
 
+## 技术栈
+
+- **Rust** + Tauri 2.0
+- **Windows API** 窗口追踪/截图
+- **SQLite** 数据存储
+- **Python** OCR常驻服务（RapidOCR）
+
 ## 目录结构
 
 ```
-src-tauri/src/
-├── main.rs              # 入口，只做启动
-├── lib.rs               # 注册所有模块
-├── commands/            # 暴露给前端的命令
-│   ├── mod.rs
-│   ├── fs.rs            # 文件/日志/本地IO
-│   ├── system.rs        # 系统信息/权限/窗口监控
-│   ├── ai.rs            # AI调用接口
-│   └── plugin.rs        # 插件管理命令
+src-tauri/
+├── src/
+│   ├── main.rs              # 入口
+│   ├── lib.rs               # 模块注册、Tauri命令绑定
+│   │
+│   ├── commands/            # 前端命令层
+│   │   ├── mod.rs
+│   │   ├── system.rs        # 系统/截图/OCR/配置命令
+│   │   ├── ai.rs            # AI配置命令
+│   │   └── diary.rs         # 日记生成命令（流式输出）
+│   │
+│   ├── services/            # 业务逻辑层
+│   │   ├── mod.rs
+│   │   ├── storage.rs       # 数据存储（JSONL/JSON）
+│   │   ├── window_tracker.rs # 窗口追踪（Windows API）
+│   │   ├── screenshot.rs    # 截图服务（全屏/应用窗口）
+│   │   ├── ocr.rs           # OCR服务（Python常驻进程）
+│   │   ├── icon_extractor.rs # 应用图标提取
+│   │   └── input_tracker.rs  # 键鼠输入追踪
+│   │
+│   ├── models/              # 数据模型
+│   │   ├── mod.rs
+│   │   ├── event.rs         # 活动事件
+│   │   └── config.rs        # 应用配置（持久化）
+│   │
+│   └── error.rs             # 错误定义
 │
-├── services/            # 纯Rust业务（不依赖tauri）
-│   ├── mod.rs
-│   ├── log_parser.rs    # 日志解析
-│   ├── analyzer.rs      # 活动分析
-│   ├── storage.rs       # 数据存储(SQLite/JSON)
-│   └── window_tracker.rs # 窗口追踪服务
+├── scripts/
+│   └── ocr_service.py       # OCR常驻服务（RapidOCR）
 │
-├── plugins/             # 插件系统
-│   ├── mod.rs           # 插件trait定义
-│   ├── loader.rs        # 动态加载插件
-│   ├── registry.rs      # 插件注册表
-│   └── sandbox.rs       # 插件沙箱/权限控制
-│
-├── ai/                  # AI模块
-│   ├── mod.rs
-│   ├── provider.rs      # AI提供商trait (OpenAI/Claude/本地)
-│   ├── diary.rs         # 日记生成
-│   └── embeddings.rs    # 向量嵌入(可选)
-│
-├── models/              # 数据模型
-│   ├── mod.rs
-│   ├── activity.rs      # 活动记录
-│   ├── card.rs          # 卡片数据
-│   └── config.rs        # 配置结构
-│
-├── state.rs             # 全局状态管理
-└── error.rs             # 统一错误定义
+└── tauri.conf.json          # Tauri配置
 ```
 
 ## 模块职责

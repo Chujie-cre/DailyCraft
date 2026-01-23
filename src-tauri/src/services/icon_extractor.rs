@@ -52,7 +52,7 @@ fn extract_icon_windows(exe_path: &str) -> Option<String> {
         GetDIBits, CreateCompatibleDC, DeleteDC, SelectObject, DeleteObject,
         BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, GetObjectW, BITMAP,
     };
-    use windows::Win32::Foundation::HWND;
+    
     
     unsafe {
         // 转换路径为宽字符
@@ -90,8 +90,8 @@ fn extract_icon_windows(exe_path: &str) -> Option<String> {
             Some(&mut bmp as *mut _ as *mut _),
         ) == 0 {
             DestroyIcon(large_icon).ok();
-            DeleteObject(icon_info.hbmColor).ok();
-            DeleteObject(icon_info.hbmMask).ok();
+            let _ = DeleteObject(icon_info.hbmColor).ok();
+            let _ = DeleteObject(icon_info.hbmMask).ok();
             return None;
         }
         
@@ -102,8 +102,8 @@ fn extract_icon_windows(exe_path: &str) -> Option<String> {
         let hdc = CreateCompatibleDC(None);
         if hdc.is_invalid() {
             DestroyIcon(large_icon).ok();
-            DeleteObject(icon_info.hbmColor).ok();
-            DeleteObject(icon_info.hbmMask).ok();
+            let _ = DeleteObject(icon_info.hbmColor).ok();
+            let _ = DeleteObject(icon_info.hbmMask).ok();
             return None;
         }
         
@@ -142,10 +142,10 @@ fn extract_icon_windows(exe_path: &str) -> Option<String> {
         );
         
         SelectObject(hdc, old_bmp);
-        DeleteDC(hdc).ok();
-        DestroyIcon(large_icon).ok();
-        DeleteObject(icon_info.hbmColor).ok();
-        DeleteObject(icon_info.hbmMask).ok();
+        let _ = DeleteDC(hdc).ok();
+        let _ = DestroyIcon(large_icon).ok();
+        let _ = DeleteObject(icon_info.hbmColor).ok();
+        let _ = DeleteObject(icon_info.hbmMask).ok();
         
         // BGRA -> RGBA
         for chunk in pixels.chunks_exact_mut(4) {
