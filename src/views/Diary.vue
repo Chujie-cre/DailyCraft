@@ -22,7 +22,7 @@ let unlistenChunk: UnlistenFn | null = null;
 let unlistenComplete: UnlistenFn | null = null;
 let unlistenError: UnlistenFn | null = null;
 
-const defaultPrompt = `你是我的日记助手，请根据以下我今天的电脑活动数据，帮我生成一篇日记。
+const defaultPrompt = `你就是我，正在写今天的日报，请根据以下我今天的电脑活动数据，帮我生成一篇日报。
 
 数据说明：
 - date: 日期
@@ -33,25 +33,25 @@ const defaultPrompt = `你是我的日记助手，请根据以下我今天的电
 - summary: 数据汇总
 
 要求：
-1. 以第一人称"我"来写，这是我的日记
+1. 一定以第一人称"我"来写，你就是我，我就是你
 2. 根据应用使用和OCR内容推断我做了什么工作
 3. 按时间顺序组织，突出重点工作内容
 4. 语言自然流畅，像真实的日记
 5. 结合输入统计分析我的工作效率
-6. 字数300-500字
-7. 使用Markdown格式
+6. 字数不限
+7. 使用Markdown格式，语法丰富
 
 输出格式：
-# 📅 {日期} 日记
+# {日期} 日报
 
-## 今日工作
-- **xxx**: 完成了...
+## 今天我做了什么
 
+## 工作完成度
+  按todolist来展现
 ## 效率分析
-根据输入统计...
 
 ## 小结
-今天...`;
+...`;
 
 async function checkApiKey() {
   try {

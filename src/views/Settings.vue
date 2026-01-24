@@ -6,6 +6,17 @@ import { emit } from '@tauri-apps/api/event';
 import { openPath as _openPath } from '@tauri-apps/plugin-opener';
 import { activityApi, type AppConfig } from '@/api/activity';
 import { aiApi, type AIConfig } from '@/api/ai';
+import Toast from '@/components/Toast.vue';
+
+const toastVisible = ref(false);
+const toastMessage = ref('');
+const toastType = ref<'success' | 'error' | 'info' | 'warning'>('info');
+
+function showToast(message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') {
+  toastMessage.value = message;
+  toastType.value = type;
+  toastVisible.value = true;
+}
 
 const dataDir = ref('');
 const newDataDir = ref('');
@@ -100,18 +111,10 @@ async function saveAiConfig() {
   aiSaving.value = true;
   try {
     await aiApi.saveConfig(aiConfig.value);
-    showConfirm({
-      title: '成功',
-      message: 'AI配置已保存',
-      onConfirm: () => {}
-    });
+    showToast('AI配置已保存', 'success');
   } catch (e) {
     console.error('保存AI配置失败:', e);
-    showConfirm({
-      title: '失败',
-      message: '保存AI配置失败',
-      onConfirm: () => {}
-    });
+    showToast('保存AI配置失败', 'error');
   } finally {
     aiSaving.value = false;
   }
@@ -123,18 +126,10 @@ async function saveAppConfig() {
     await activityApi.saveAppConfig(appConfig.value);
     // 通知App.vue重新加载配置
     await emit('config-changed', appConfig.value);
-    showConfirm({
-      title: '成功',
-      message: '监控配置已保存并生效',
-      onConfirm: () => {}
-    });
+    showToast('监控配置已保存并生效', 'success');
   } catch (e) {
     console.error('保存应用配置失败:', e);
-    showConfirm({
-      title: '失败',
-      message: '保存配置失败，请重试',
-      onConfirm: () => {}
-    });
+    showToast('保存配置失败，请重试', 'error');
   } finally {
     configSaving.value = false;
   }
@@ -160,11 +155,7 @@ async function clearCache() {
     onConfirm: async () => {
       try {
         await invoke('clear_cache');
-        showConfirm({
-          title: '成功',
-          message: '缓存已清理完成',
-          onConfirm: () => {}
-        });
+        showToast('缓存已清理完成', 'success');
       } catch (e) {
         console.error('清理缓存失败:', e);
         showConfirm({
@@ -195,18 +186,10 @@ async function saveDataDir() {
   try {
     await activityApi.setDataDir(newDataDir.value);
     dataDir.value = newDataDir.value;
-    showConfirm({
-      title: '成功',
-      message: '数据目录已更新',
-      onConfirm: () => {}
-    });
+    showToast('数据目录已更新', 'success');
   } catch (e) {
     console.error('保存失败:', e);
-    showConfirm({
-      title: '失败',
-      message: '保存数据目录失败',
-      onConfirm: () => {}
-    });
+    showToast('保存数据目录失败', 'error');
   }
 }
 
@@ -439,6 +422,14 @@ onMounted(() => {
         </div>
       </Transition>
     </Teleport>
+    
+    <!-- Toast提示 -->
+    <Toast
+      :visible="toastVisible"
+      :message="toastMessage"
+      :type="toastType"
+      @close="toastVisible = false"
+    />
   </div>
 </template>
 

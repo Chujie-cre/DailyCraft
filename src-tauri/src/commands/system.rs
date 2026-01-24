@@ -107,6 +107,15 @@ pub fn get_today_event_count() -> std::result::Result<usize, String> {
     Ok(events.len())
 }
 
+/// 获取所有日期的总事件数量
+#[tauri::command]
+pub fn get_total_event_count() -> std::result::Result<usize, String> {
+    let config = get_config();
+    let storage = StorageService::new(config);
+    let total = storage.get_total_event_count().map_err(|e| e.to_string())?;
+    Ok(total)
+}
+
 /// 设置数据存储目录
 #[tauri::command]
 pub fn set_data_dir(path: String) -> std::result::Result<(), String> {

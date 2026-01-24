@@ -6,6 +6,7 @@ pub mod services;
 use commands::system::*;
 use commands::ai::*;
 use commands::diary::*;
+use commands::update::*;
 use tauri::{
     Manager,
     menu::{Menu, MenuItem},
@@ -71,6 +72,7 @@ pub fn run() {
             set_data_dir,
             init_today_storage,
             get_today_event_count,
+            get_total_event_count,
             record_keyboard_event,
             record_mouse_event,
             record_idle_event,
@@ -107,7 +109,13 @@ pub fn run() {
             get_dashboard_stats,
             ocr_image,
             get_ocr_data_by_date,
-            save_ocr_record
+            save_ocr_record,
+            check_for_update,
+            set_update_preference,
+            get_current_version,
+            open_update_window,
+            download_update,
+            install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
