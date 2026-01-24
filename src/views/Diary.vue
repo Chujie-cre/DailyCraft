@@ -42,16 +42,13 @@ const defaultPrompt = `你是我的日记助手，请根据以下我今天的电
 7. 使用Markdown格式
 
 输出格式：
-# 📅 {日期} 日记
+# 日报
 
-## 今日工作
-- **xxx**: 完成了...
+## 今天做了什么
 
 ## 效率分析
-根据输入统计...
 
 ## 小结
-今天...`;
 
 async function checkApiKey() {
   try {
