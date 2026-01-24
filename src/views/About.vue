@@ -1,9 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { updateApi, type ReleaseInfo } from '@/api/update';
+import UpdateDialog from '@/components/UpdateDialog.vue';
+import Toast from '@/components/Toast.vue';
 
-const version = ref('0.1.0');
-const description = ref('AI可视化日志分析软件，帮助您追踪每日活动并生成智能日记。');
+const toastVisible = ref(false);
+const toastMessage = ref('');
+const toastType = ref<'success' | 'error' | 'info' | 'warning'>('info');
+
+function showToast(message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') {
+  toastMessage.value = message;
+  toastType.value = type;
+  toastVisible.value = true;
+}
+
+const version = ref('加载中...');
+
+onMounted(async () => {
+  try {
+    version.value = await updateApi.getCurrentVersion();
+  } catch (e) {
+    console.error('获取版本号失败:', e);
+    version.value = '未知';
+  }
+});
 
 const contactForm = ref({
   email: '',
@@ -11,6 +32,39 @@ const contactForm = ref({
 });
 const isSubmitting = ref(false);
 const submitSuccess = ref(false);
+const isCheckingUpdate = ref(false);
+const showUpdateDialog = ref(false);
+const updateInfo = ref<{
+  currentVersion: string;
+  latestVersion: string;
+  releaseInfo: ReleaseInfo;
+} | null>(null);
+
+async function checkForUpdate() {
+  isCheckingUpdate.value = true;
+  try {
+    const result = await updateApi.checkForUpdate(true);
+    if (result.has_update && result.release_info) {
+      // 打开独立更新窗口
+      await updateApi.openUpdateWindow(
+        result.current_version,
+        result.latest_version || '',
+        result.release_info
+      );
+    } else {
+      showToast('已是最新版本', 'success');
+    }
+  } catch (e) {
+    console.error('检查更新失败:', e);
+    showToast('检查更新失败，请检查网络连接', 'error');
+  } finally {
+    isCheckingUpdate.value = false;
+  }
+}
+
+function closeUpdateDialog() {
+  showUpdateDialog.value = false;
+}
 
 async function openLink(url: string) {
   await openUrl(url);
@@ -18,7 +72,7 @@ async function openLink(url: string) {
 
 async function submitContact() {
   if (!contactForm.value.email || !contactForm.value.message) {
-    alert('请填写邮箱和消息内容');
+    showToast('请填写邮箱和消息内容', 'warning');
     return;
   }
   
@@ -39,11 +93,12 @@ async function submitContact() {
     if (response.ok) {
       submitSuccess.value = true;
       contactForm.value = { email: '', message: '' };
+      showToast('发送成功！', 'success');
       setTimeout(() => { submitSuccess.value = false; }, 3000);
     }
   } catch (e) {
     console.error('提交失败:', e);
-    alert('提交失败，请稍后重试');
+    showToast('提交失败，请稍后重试', 'error');
   } finally {
     isSubmitting.value = false;
   }
@@ -56,14 +111,15 @@ async function submitContact() {
       <div class="about-header">
         <img src="/icon.png" alt="DailyCraft" class="about-icon" />
         <h1 class="about-title">DailyCraft</h1>
-        <p class="about-version">版本 {{ version }}</p>
-        <p class="about-desc">{{ description }}</p>
+        <div class="version-badge">
+          <span class="version-text">版本 {{ version }}</span>
+        </div>
       </div>
 
       <div class="about-buttons">
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" @click="checkForUpdate" :disabled="isCheckingUpdate">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          检查更新
+          {{ isCheckingUpdate ? '检查中...' : '检查更新' }}
         </button>
         <button class="btn btn-secondary" @click="openLink('https://github.com/Chujie-cre/DailyCraft')">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
@@ -149,6 +205,24 @@ async function submitContact() {
         <p class="copyright">© 2026 DailyCraft 💜 ChuJie All rights reserved.</p>
       </div>
     </div>
+    
+    <!-- 更新弹窗 -->
+    <UpdateDialog
+      v-if="updateInfo"
+      :visible="showUpdateDialog"
+      :current-version="updateInfo.currentVersion"
+      :latest-version="updateInfo.latestVersion"
+      :release-info="updateInfo.releaseInfo"
+      @close="closeUpdateDialog"
+    />
+    
+    <!-- Toast提示 -->
+    <Toast
+      :visible="toastVisible"
+      :message="toastMessage"
+      :type="toastType"
+      @close="toastVisible = false"
+    />
   </div>
 </template>
 
@@ -164,12 +238,12 @@ async function submitContact() {
 .about-content {
   max-width: 600px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 10px 10px;
   text-align: center;
 }
 
 .about-header {
-  margin-bottom: 32px;
+  margin-bottom: 2px;
 }
 
 .about-icon {
@@ -187,17 +261,40 @@ async function submitContact() {
   margin: 0 0 8px;
 }
 
-.about-version {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0 0 16px;
+.version-badge {
+  display: inline-block;
+  position: relative;
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: #fff;
+  margin: 8px 0 16px;
 }
 
-.about-desc {
-  font-size: 14px;
-  color: #4b5563;
-  margin: 0;
-  line-height: 1.6;
+.version-badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 2px;
+  background: linear-gradient(90deg, #ec4899, #f472b6, #ec4899);
+  background-size: 200% 100%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: border-shimmer 2s linear infinite;
+}
+
+@keyframes border-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.version-text {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
 }
 
 .about-buttons {
@@ -303,6 +400,7 @@ async function submitContact() {
 }
 
 .copyright {
+  padding-top: 20px;
   font-size: 12px;
   color: #9ca3af;
   margin: 0;

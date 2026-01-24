@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import Sidebar from "./components/layout/Sidebar.vue";
 import Header from "./components/layout/Header.vue";
 import Home from "./views/Home.vue";
@@ -9,10 +9,52 @@ import About from "./views/About.vue";
 import Diary from "./views/Diary.vue";
 import Screenshots from "./views/Screenshots.vue";
 import Chat from "./views/Chat.vue";
+import UpdateDialog from './components/UpdateDialog.vue';
+
+// 检测是否是独立更新窗口
+const isUpdateWindow = computed(() => {
+  return window.location.search.includes('current=');
+});
+
 import { activityApi, type AppConfig } from './api/activity';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { updateApi, type ReleaseInfo } from './api/update';
 
 const currentPage = ref('home');
+
+// 如果是更新窗口，不执行主窗口逻辑
+if (isUpdateWindow.value) {
+  // 更新窗口不需要主窗口的逻辑
+}
+
+// 更新检查相关
+const showUpdateDialog = ref(false);
+const updateInfo = ref<{
+  currentVersion: string;
+  latestVersion: string;
+  releaseInfo: ReleaseInfo;
+} | null>(null);
+
+async function checkForUpdate() {
+  if (isUpdateWindow.value) return; // 更新窗口不检查更新
+  try {
+    const result = await updateApi.checkForUpdate(false);
+    if (result.has_update && result.release_info) {
+      // 打开独立更新窗口
+      await updateApi.openUpdateWindow(
+        result.current_version,
+        result.latest_version || '',
+        result.release_info
+      );
+    }
+  } catch (e) {
+    console.error('检查更新失败:', e);
+  }
+}
+
+function closeUpdateDialog() {
+  showUpdateDialog.value = false;
+}
 
 function handlePageChange(page: string) {
   currentPage.value = page;
@@ -169,6 +211,9 @@ onMounted(async () => {
     appConfig = event.payload;
     restartTracking();
   });
+  
+  // 启动时检查更新
+  checkForUpdate();
 });
 
 onUnmounted(() => {
@@ -188,7 +233,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app">
+  <!-- 独立更新窗口 -->
+  <UpdateDialog v-if="isUpdateWindow" />
+  
+  <!-- 主应用窗口 -->
+  <div v-else class="app">
     <div class="sidebar-area">
       <Sidebar @pageChange="handlePageChange" />
     </div>
@@ -204,6 +253,16 @@ onUnmounted(() => {
         <About v-else-if="currentPage === 'about'" />
       </main>
     </div>
+    
+    <!-- 更新弹窗（保留，作为备用） -->
+    <UpdateDialog
+      v-if="updateInfo"
+      :visible="showUpdateDialog"
+      :current-version="updateInfo.currentVersion"
+      :latest-version="updateInfo.latestVersion"
+      :release-info="updateInfo.releaseInfo"
+      @close="closeUpdateDialog"
+    />
   </div>
 </template>
 
