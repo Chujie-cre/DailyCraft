@@ -5,9 +5,12 @@
       <h1 class="logo">DailyCraft</h1>
     </div>
     <div class="header-center">
-      <span class="date">{{ currentDateTime }}</span>
+      <span class="time-badge">
+        <span class="time-text">{{ timeStr }}</span>
+      </span>
     </div>
     <div class="header-right">
+      <span class="date-display">{{ dateStr }}</span>
       <button class="header-btn" @click="handleSettingsClick">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
@@ -25,7 +28,8 @@ const emit = defineEmits<{
   (e: 'goToSettings'): void;
 }>();
 
-const currentDateTime = ref('');
+const dateStr = ref('');
+const timeStr = ref('');
 let timer: number | null = null;
 
 function updateDateTime() {
@@ -36,15 +40,11 @@ function updateDateTime() {
     day: 'numeric',
     weekday: 'long'
   };
-  const timeOptions: Intl.DateTimeFormatOptions = {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  };
-  const dateStr = now.toLocaleDateString('zh-CN', dateOptions);
-  const timeStr = now.toLocaleTimeString('zh-CN', timeOptions);
-  currentDateTime.value = `${dateStr} ${timeStr}`;
+  dateStr.value = now.toLocaleDateString('zh-CN', dateOptions);
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  timeStr.value = `${h}:${m}:${s}`;
 }
 
 onMounted(() => {
@@ -99,9 +99,46 @@ function handleSettingsClick() {
   align-items: center;
 }
 
-.date {
+.date-display {
   font-size: 14px;
   color: #666;
+  margin-right: 8px;
+}
+
+.time-badge {
+  display: inline-block;
+  position: relative;
+  padding: 5px 12px;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.time-badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  padding: 2px;
+  background: linear-gradient(90deg, #ec4899, #f472b6, #ec4899);
+  background-size: 200% 100%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: border-shimmer 2s linear infinite;
+}
+
+@keyframes border-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.time-text {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 600;
+  font-family: 'Consolas', monospace;
+  position: relative;
+  z-index: 1;
 }
 
 .header-right {
