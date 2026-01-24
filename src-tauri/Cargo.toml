@@ -1,9 +1,9 @@
 [package]
 name = "dailycraft"
-version = "0.0.1"
-description = "A Tauri App"
+version = "0.1.2"
+description = "AI可视化日报"
 authors = ["you"]
-edition = "2021"
+edition = "2026"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
