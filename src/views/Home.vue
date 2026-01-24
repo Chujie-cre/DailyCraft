@@ -84,7 +84,9 @@ async function loadStats() {
   try {
     // 加载今日事件数
     todayEvents.value = await activityApi.getTodayEventCount();
-    eventCount.value = todayEvents.value;
+    
+    // 加载总事件数
+    eventCount.value = await activityApi.getTotalEventCount();
     
     // 加载日记列表获取总天数
     try {

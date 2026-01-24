@@ -99,6 +99,8 @@ export const activityApi = {
   
   getTodayEventCount: () => invoke<number>('get_today_event_count'),
   
+  getTotalEventCount: () => invoke<number>('get_total_event_count'),
+  
   getAppIcon: (exePath: string) => invoke<string | null>('get_icon_for_app', { exePath }),
   
   getIconForApp: (appName: string) => invoke<string | null>('get_icon_by_app_name', { appName }),

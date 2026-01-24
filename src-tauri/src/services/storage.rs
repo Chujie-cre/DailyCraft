@@ -135,4 +135,37 @@ impl StorageService {
     pub fn get_data_dir(&self) -> String {
         self.config.data_dir.to_string_lossy().to_string()
     }
+    
+    /// 获取所有日期的总事件数量
+    pub fn get_total_event_count(&self) -> Result<usize> {
+        let data_dir = &self.config.data_dir;
+        if !data_dir.exists() {
+            return Ok(0);
+        }
+        
+        let mut total = 0;
+        
+        // 遍历所有日期目录
+        if let Ok(entries) = fs::read_dir(data_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    // 检查目录名是否符合日期格式 YYYY-MM-DD
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if name.len() == 10 && name.chars().nth(4) == Some('-') && name.chars().nth(7) == Some('-') {
+                            let events_path = path.join("raw_events.jsonl");
+                            if events_path.exists() {
+                                if let Ok(file) = File::open(&events_path) {
+                                    let reader = BufReader::new(file);
+                                    total += reader.lines().filter(|l| l.is_ok()).count();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(total)
+    }
 }
