@@ -101,29 +101,44 @@ async function loadScreenshots() {
       .map(parseScreenshotInfo)
       .sort((a, b) => a.timestamp - b.timestamp);
     
-    // 异步加载应用图标
-    for (const shot of parsed) {
-      if (shot.appName && shot.appName !== '未知') {
-        try {
-          const icon = await activityApi.getIconForApp(shot.appName);
-          if (icon) {
-            shot.iconBase64 = icon;
-          }
-        } catch {
-          // 忽略图标加载失败
-        }
-      }
-    }
-    
+    // 先显示截图列表
     screenshots.value = parsed;
     
     if (screenshots.value.length > 0) {
       currentIndex.value = 0;
     }
+    
+    // 图标异步懒加载，不阻塞页面显示
+    loadIconsAsync(parsed);
   } catch (e) {
     console.error('加载截图失败:', e);
   } finally {
     isLoading.value = false;
+  }
+}
+
+// 异步加载图标，不阻塞主流程
+async function loadIconsAsync(items: ScreenshotInfo[]) {
+  const iconCache = new Map<string, string>();
+  
+  for (const shot of items) {
+    if (shot.appName && shot.appName !== '未知') {
+      // 使用缓存避免重复加载
+      if (iconCache.has(shot.appName)) {
+        shot.iconBase64 = iconCache.get(shot.appName);
+        continue;
+      }
+      
+      try {
+        const icon = await activityApi.getIconForApp(shot.appName);
+        if (icon) {
+          shot.iconBase64 = icon;
+          iconCache.set(shot.appName, icon);
+        }
+      } catch {
+        // 忽略图标加载失败
+      }
+    }
   }
 }
 
