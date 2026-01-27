@@ -19,6 +19,19 @@ const totalDays = ref(0);
 const todayEvents = ref(0);
 const todayDiary = ref<string | null>(null);
 
+// 欢迎模块显示状态
+const showWelcome = ref(true);
+
+function dismissWelcome() {
+  showWelcome.value = false;
+  localStorage.setItem('dailycraft_welcome_dismissed', 'true');
+}
+
+function checkWelcomeDismissed() {
+  const dismissed = localStorage.getItem('dailycraft_welcome_dismissed');
+  showWelcome.value = dismissed !== 'true';
+}
+
 // 窗口resize处理
 let resizeTimer: number | null = null;
 function handleResize() {
@@ -245,6 +258,7 @@ const barChartOption = computed(() => ({
 }));
 
 onMounted(() => {
+  checkWelcomeDismissed();
   loadStats();
   window.addEventListener('resize', handleResize);
 });
@@ -259,7 +273,8 @@ onUnmounted(() => {
   <div class="home">
     <div class="home-content">
       <!-- 欢迎模块 -->
-      <div class="welcome-section">
+      <div v-if="showWelcome" class="welcome-section">
+        <button class="welcome-close" @click="dismissWelcome" title="关闭">×</button>
         <div class="welcome-content">
           <div class="welcome-icon">
             <img src="/icon.png" alt="DailyCraft" />
@@ -385,6 +400,30 @@ onUnmounted(() => {
   margin-bottom: 24px;
   border: 1px solid #e5e7eb;
   text-align: center;
+  position: relative;
+}
+
+.welcome-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 50%;
+  font-size: 18px;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.welcome-close:hover {
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .welcome-content {
@@ -614,8 +653,26 @@ onUnmounted(() => {
 }
 
 @media (max-width: 900px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
   .charts-grid {
     grid-template-columns: 1fr;
+  }
+  .apps-grid-full {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+  .apps-grid-full {
+    grid-template-columns: 1fr;
+  }
+  .empty-apps {
+    grid-column: span 1;
   }
 }
 
