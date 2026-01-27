@@ -395,7 +395,7 @@ onMounted(() => {
         <label class="setting-sublabel">截图设置</label>
         <div class="setting-option">
           <input type="checkbox" id="screenshotEnabled" v-model="appConfig.screenshot_enabled" />
-          <label for="screenshotEnabled">启用自动截图</label>
+          <label for="screenshotEnabled">启用自动截图（需安装Python3.x）</label>
         </div>
         <div v-if="appConfig.screenshot_enabled" class="screenshot-options">
           <div class="setting-row">

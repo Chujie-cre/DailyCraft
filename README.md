@@ -78,15 +78,15 @@ npm run tauri build
 ```
 DailyCraft/
 ├── src/                      # Vue 前端展示
-│   ├── views/                # 页面组件
+│   ├── views/                # 页面
 │   │   ├── Home.vue          # 首页仪表盘
 │   │   ├── Dashboard.vue     # 活动日志面板
-│   │   ├── Diary.vue         # AI日记生成
+│   │   ├── Diary.vue         # AI日报生成
 │   │   ├── Chat.vue          # AI对话
 │   │   ├── Screenshots.vue   # 记录帧时间轴
 │   │   ├── Settings.vue      # 设置页面
 │   │   └── About.vue         # 关于页面
-│   ├── components/           # 通用组件
+│   ├── components/           
 │   │   ├── Toast.vue         # 消息提示
 │   │   ├── UpdateDialog.vue  # 更新对话框
 │   │   ├── flow/             # 流程图组件
