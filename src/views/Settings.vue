@@ -23,6 +23,67 @@ const newDataDir = ref('');
 const autoStartEnabled = ref(false);
 const isLoading = ref(true);
 
+// AI厂商预设
+const aiProviders = [
+  {
+    name: '阿里云百炼',
+    base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    models: ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-long'],
+    doc_url: 'https://bailian.console.aliyun.com/'
+  },
+  {
+    name: 'OpenAI',
+    base_url: 'https://api.openai.com/v1',
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    doc_url: 'https://platform.openai.com/api-keys'
+  },
+  {
+    name: 'DeepSeek',
+    base_url: 'https://api.deepseek.com',
+    models: ['deepseek-chat', 'deepseek-reasoner'],
+    doc_url: 'https://platform.deepseek.com/api_keys'
+  },
+  {
+    name: '硅基流动',
+    base_url: 'https://api.siliconflow.cn/v1',
+    models: ['Qwen/Qwen2.5-72B-Instruct', 'deepseek-ai/DeepSeek-V3', 'Pro/deepseek-ai/DeepSeek-R1'],
+    doc_url: 'https://cloud.siliconflow.cn/account/ak'
+  },
+  {
+    name: '智谱AI',
+    base_url: 'https://open.bigmodel.cn/api/paas/v4',
+    models: ['glm-4-plus', 'glm-4-flash', 'glm-4-long'],
+    doc_url: 'https://open.bigmodel.cn/usercenter/apikeys'
+  },
+  {
+    name: '月之暗面',
+    base_url: 'https://api.moonshot.cn/v1',
+    models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+    doc_url: 'https://platform.moonshot.cn/console/api-keys'
+  },
+  {
+    name: '百川智能',
+    base_url: 'https://api.baichuan-ai.com/v1',
+    models: ['Baichuan4', 'Baichuan3-Turbo', 'Baichuan3-Turbo-128k'],
+    doc_url: 'https://platform.baichuan-ai.com/console/apikey'
+  },
+  {
+    name: '零一万物',
+    base_url: 'https://api.lingyiwanwu.com/v1',
+    models: ['yi-large', 'yi-medium', 'yi-spark'],
+    doc_url: 'https://platform.lingyiwanwu.com/apikeys'
+  },
+  {
+    name: '自定义',
+    base_url: '',
+    models: [],
+    doc_url: ''
+  }
+];
+
+const selectedProvider = ref('阿里云百炼');
+const useCustomModel = ref(false);
+
 // AI配置
 const aiConfig = ref<AIConfig>({
   api_key: '',
@@ -31,6 +92,40 @@ const aiConfig = ref<AIConfig>({
 });
 const showApiKey = ref(false);
 const aiSaving = ref(false);
+
+// 当前厂商的模型列表
+const currentModels = ref<string[]>(['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-long']);
+const currentDocUrl = ref('https://bailian.console.aliyun.com/');
+
+// 切换厂商
+function onProviderChange() {
+  const provider = aiProviders.find(p => p.name === selectedProvider.value);
+  if (provider) {
+    useCustomModel.value = false;
+    if (provider.name !== '自定义') {
+      aiConfig.value.base_url = provider.base_url;
+      currentModels.value = provider.models;
+      currentDocUrl.value = provider.doc_url;
+      if (provider.models.length > 0) {
+        aiConfig.value.model = provider.models[0];
+      }
+    } else {
+      currentModels.value = [];
+      currentDocUrl.value = '';
+      useCustomModel.value = true;
+    }
+  }
+}
+
+// 根据base_url识别当前厂商
+function detectProvider(baseUrl: string): string {
+  for (const provider of aiProviders) {
+    if (provider.base_url && baseUrl.includes(provider.base_url.replace('https://', '').split('/')[0])) {
+      return provider.name;
+    }
+  }
+  return '自定义';
+}
 
 // 应用配置
 const appConfig = ref<AppConfig>({
@@ -91,6 +186,17 @@ async function loadSettings() {
     // 加载AI配置
     try {
       aiConfig.value = await aiApi.getConfig();
+      // 根据base_url识别当前厂商
+      selectedProvider.value = detectProvider(aiConfig.value.base_url);
+      const provider = aiProviders.find(p => p.name === selectedProvider.value);
+      if (provider) {
+        currentModels.value = provider.models;
+        currentDocUrl.value = provider.doc_url;
+        // 如果当前模型不在预设列表中，自动开启手动输入模式
+        if (provider.models.length > 0 && !provider.models.includes(aiConfig.value.model)) {
+          useCustomModel.value = true;
+        }
+      }
     } catch (aiErr) {
       console.error('获取AI配置失败:', aiErr);
     }
@@ -289,7 +395,7 @@ onMounted(() => {
         <label class="setting-sublabel">截图设置</label>
         <div class="setting-option">
           <input type="checkbox" id="screenshotEnabled" v-model="appConfig.screenshot_enabled" />
-          <label for="screenshotEnabled">启用自动截图</label>
+          <label for="screenshotEnabled">启用自动截图（需安装Python3.x）</label>
         </div>
         <div v-if="appConfig.screenshot_enabled" class="screenshot-options">
           <div class="setting-row">
@@ -370,36 +476,86 @@ onMounted(() => {
       </div>
       
       <div class="setting-item">
-        <label class="setting-label">AI日记配置（阿里百炼）</label>
-        <div class="setting-input-group">
-          <input 
-            v-model="aiConfig.api_key" 
-            :type="showApiKey ? 'text' : 'password'" 
-            class="setting-input"
-            placeholder="输入API Key"
-          />
-          <button class="animated-button small" @click="showApiKey = !showApiKey">
-            <svg viewBox="0 0 24 24" class="arr-2" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"></path>
-            </svg>
-            <span class="text">{{ showApiKey ? '隐藏' : '显示' }}</span>
-            <span class="circle"></span>
-            <svg viewBox="0 0 24 24" class="arr-1" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"></path>
-            </svg>
-          </button>
-          <button class="animated-button small primary" @click="saveAiConfig" :disabled="aiSaving">
+        <label class="setting-label">AI模型配置</label>
+        <div class="ai-config-grid">
+          <div class="setting-row">
+            <span class="setting-row-label">服务商</span>
+            <select v-model="selectedProvider" class="setting-select" @change="onProviderChange">
+              <option v-for="provider in aiProviders" :key="provider.name" :value="provider.name">
+                {{ provider.name }}
+              </option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span class="setting-row-label">模型</span>
+            <div class="model-input-group">
+              <select 
+                v-if="currentModels.length > 0 && !useCustomModel" 
+                v-model="aiConfig.model" 
+                class="setting-select"
+              >
+                <option v-for="model in currentModels" :key="model" :value="model">
+                  {{ model }}
+                </option>
+              </select>
+              <input 
+                v-else
+                v-model="aiConfig.model" 
+                type="text" 
+                class="setting-input"
+                placeholder="输入模型名称，如 qwen-max-latest"
+              />
+              <label v-if="currentModels.length > 0" class="custom-model-toggle">
+                <input type="checkbox" v-model="useCustomModel" />
+                <span>手动输入</span>
+              </label>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-row-label">API地址</span>
+            <input 
+              v-model="aiConfig.base_url" 
+              type="text" 
+              class="setting-input"
+              placeholder="https://api.example.com/v1"
+              :disabled="selectedProvider !== '自定义'"
+            />
+          </div>
+          <div class="setting-row">
+            <span class="setting-row-label">API Key</span>
+            <div class="api-key-input-group">
+              <input 
+                v-model="aiConfig.api_key" 
+                :type="showApiKey ? 'text' : 'password'" 
+                class="setting-input"
+                placeholder="输入API Key"
+              />
+              <button class="icon-btn" @click="showApiKey = !showApiKey" :title="showApiKey ? '隐藏' : '显示'">
+                <svg v-if="showApiKey" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"></path>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="ai-config-footer">
+          <p class="setting-hint" v-if="currentDocUrl">
+            <a :href="currentDocUrl" target="_blank">获取 {{ selectedProvider }} API Key →</a>
+          </p>
+          <button class="animated-button primary" @click="saveAiConfig" :disabled="aiSaving">
             <svg viewBox="0 0 24 24" class="arr-2" xmlns="http://www.w3.org/2000/svg">
               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
             </svg>
-            <span class="text">{{ aiSaving ? '保存中...' : '保存' }}</span>
+            <span class="text">{{ aiSaving ? '保存中...' : '保存AI配置' }}</span>
             <span class="circle"></span>
             <svg viewBox="0 0 24 24" class="arr-1" xmlns="http://www.w3.org/2000/svg">
               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
             </svg>
           </button>
         </div>
-        <p class="setting-hint">模型: {{ aiConfig.model }} | <a href="https://bailian.console.aliyun.com/" target="_blank">获取API Key</a></p>
       </div>
     </div>
 
@@ -876,5 +1032,115 @@ onMounted(() => {
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
   transform: scale(0.9);
+}
+
+/* AI配置样式 */
+.ai-config-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.ai-config-grid .setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-config-grid .setting-row-label {
+  min-width: 80px;
+  font-weight: 600;
+}
+
+.ai-config-grid .setting-select,
+.ai-config-grid .setting-input {
+  flex: 1;
+}
+
+.api-key-input-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.api-key-input-group .setting-input {
+  flex: 1;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.icon-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.ai-config-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 2px dashed #e5e7eb;
+}
+
+.ai-config-footer .setting-hint {
+  margin: 0;
+}
+
+.ai-config-footer .setting-hint a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.ai-config-footer .setting-hint a:hover {
+  text-decoration: underline;
+}
+
+.model-input-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.model-input-group .setting-select,
+.model-input-group .setting-input {
+  flex: 1;
+}
+
+.custom-model-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.custom-model-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.custom-model-toggle:hover {
+  color: #3b82f6;
 }
 </style>

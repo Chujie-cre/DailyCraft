@@ -1,9 +1,44 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { marked } from 'marked';
 import { activityApi } from '@/api/activity';
 import { aiApi } from '@/api/ai';
+
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 获取今天的笔记内容
+async function getTodayNotesContent(): Promise<string> {
+  try {
+    const data = await invoke<string>('load_notes');
+    if (!data) return '';
+    
+    const notes: Note[] = JSON.parse(data);
+    const today = new Date().toISOString().split('T')[0];
+    
+    const todayNotes = notes.filter(n => {
+      const noteDate = new Date(n.createdAt).toISOString().split('T')[0];
+      return noteDate === today;
+    });
+    
+    if (todayNotes.length === 0) return '';
+    
+    return todayNotes.map(n => {
+      const textContent = n.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      return `【${n.title}】${textContent}`;
+    }).join('\n\n');
+  } catch (e) {
+    console.warn('获取笔记失败:', e);
+    return '';
+  }
+}
 
 const isGenerating = ref(false);
 const diary = ref('');
@@ -22,32 +57,29 @@ let unlistenChunk: UnlistenFn | null = null;
 let unlistenComplete: UnlistenFn | null = null;
 let unlistenError: UnlistenFn | null = null;
 
-const defaultPrompt = `你就是我，正在写今天的日报，请根据以下我今天的电脑活动数据，帮我生成一篇日报。
+const defaultPrompt = `你就是我，正在写今天的日报，请根据以下我今天的电脑活动摘要数据，帮我生成一篇日报。
 
 数据说明：
 - date: 日期
-- activities: 应用使用记录（app_focus应用切换、keyboard键盘、mouse鼠标、idle空闲）
-- ocr_texts: 截图OCR识别的文字内容，反映我具体在做什么
-- screenshots: 截图统计
-- input_stats: 输入统计（按键次数、点击次数、鼠标移动距离、空闲时间）
-- summary: 数据汇总
+- app_usage: 应用使用统计（按使用次数排序，包含应用名、焦点次数、窗口标题样本）
+- input_summary: 输入统计（按键次数、点击次数、鼠标移动距离(米)、空闲分钟数）
+- ocr_highlights: OCR识别的文字摘要（时间、应用、文字片段）
+- statistics: 汇总统计（应用切换次数、使用的应用数、截图数、空闲次数）
 
 要求：
 1. 一定以第一人称"我"来写，你就是我，我就是你
-2. 根据应用使用和OCR内容推断我做了什么工作
-3. 按时间顺序组织，突出重点工作内容
+2. 根据应用使用统计和OCR内容推断我做了什么工作
+3. 突出重点工作内容，审查记事本的内容是否有完成！！！
 4. 语言自然流畅，像真实的日记
 5. 结合输入统计分析我的工作效率
-6. 字数不限
-7. 使用Markdown格式，语法丰富
+6. 字数控制在500-1000字
+7. 使用Markdown格式
 
 输出格式：
 # {日期} 日报
 
 ## 今天我做了什么
 
-## 工作完成度
-  按todolist来展现
 ## 效率分析
 
 ## 小结
@@ -135,39 +167,78 @@ async function startGeneration() {
       console.warn('获取输入统计失败:', e);
     }
     
-    // 组合全部数据
-    const combinedData = {
+    // 智能摘要数据，避免token爆炸
+    // 1. 统计应用使用情况（按应用名聚合）
+    const appUsageMap = new Map<string, { count: number; titles: Set<string> }>();
+    for (const event of (events.app_focus || [])) {
+      const app = event.app || '未知应用';
+      if (!appUsageMap.has(app)) {
+        appUsageMap.set(app, { count: 0, titles: new Set() });
+      }
+      const usage = appUsageMap.get(app)!;
+      usage.count++;
+      if (event.window_title) {
+        usage.titles.add(event.window_title.substring(0, 50)); // 限制标题长度
+      }
+    }
+    
+    // 转换为数组并按使用次数排序，保留所有应用（100%）
+    const appUsageSummary = Array.from(appUsageMap.entries())
+      .map(([app, data]) => ({
+        app,
+        focus_count: data.count,
+        sample_titles: Array.from(data.titles).slice(0, 3)
+      }))
+      .sort((a, b) => b.focus_count - a.focus_count);
+    
+    // 2. OCR文本摘要：取20%的记录（无上限），均匀采样覆盖全天
+    const ocrSampleCount = Math.max(1, Math.ceil(ocrData.length * 0.2));
+    const ocrStep = Math.max(1, Math.floor(ocrData.length / ocrSampleCount));
+    const sampledOcr: any[] = [];
+    for (let i = 0; i < ocrData.length && sampledOcr.length < ocrSampleCount; i += ocrStep) {
+      sampledOcr.push(ocrData[i]);
+    }
+    const ocrSummary = sampledOcr.map(item => ({
+      time: item.timestamp?.substring(11, 16) || '',
+      app: item.app_name || '',
+      text: (item.text || '').substring(0, 200)
+    }));
+    
+    // 3. 计算空闲时间统计
+    const idleEvents = events.idle || [];
+    const totalIdleMinutes = Math.round(inputStats.idle_seconds / 60);
+    
+    // 获取今天的笔记内容
+    let todayNotes = '';
+    try {
+      todayNotes = await getTodayNotesContent();
+    } catch (e) {
+      console.warn('获取笔记失败:', e);
+    }
+    
+    // 组合精简后的数据
+    const combinedData: any = {
       date: today,
-      activities: {
-        app_focus: events.app_focus || [],
-        keyboard: events.keyboard || [],
-        mouse: events.mouse || [],
-        idle: events.idle || []
-      },
-      ocr_texts: ocrData.map(item => ({
-        time: item.timestamp,
-        app: item.app_name,
-        content: item.text
-      })),
-      screenshots: {
-        count: screenshots.length,
-        files: screenshots.slice(0, 20) // 限制数量避免过长
-      },
-      input_stats: {
+      app_usage: appUsageSummary,
+      input_summary: {
         total_keystrokes: inputStats.key_count,
         total_clicks: inputStats.click_count,
-        mouse_distance_px: inputStats.mouse_distance,
-        idle_seconds: inputStats.idle_seconds
+        mouse_distance_meters: Math.round(inputStats.mouse_distance / 1000), // 转换为米
+        idle_minutes: totalIdleMinutes
       },
-      summary: {
-        app_count: events.app_focus?.length || 0,
-        keyboard_events: events.keyboard?.length || 0,
-        mouse_events: events.mouse?.length || 0,
-        idle_events: events.idle?.length || 0,
+      ocr_highlights: ocrSummary,
+      statistics: {
+        total_app_switches: (events.app_focus || []).length,
+        unique_apps_used: appUsageMap.size,
         screenshot_count: screenshots.length,
-        ocr_count: ocrData.length
+        idle_periods: idleEvents.length
       }
     };
+    
+    // 如果有今天的笔记，添加到数据中
+    if (todayNotes) {
+      combinedData.user_notes = todayNotes;
+    }
     
     const activitiesJson = JSON.stringify(combinedData, null, 2);
     isGenerating.value = true;
@@ -233,11 +304,11 @@ onUnmounted(() => {
               <span v-else class="loading-spinner"></span>
             </div>
           </div>
-          <span class="btn-text">{{ isGenerating ? '生成中...' : '生成今日日记' }}</span>
+          <span class="btn-text">{{ isGenerating ? '生成中...' : '生成今日日报' }}</span>
           <div class="hover-hints">
             <div class="hint-left">
               <span class="hint-line"></span>
-              <span class="hint-text">AI日记生成</span>
+              <span class="hint-text">AI日报生成</span>
             </div>
             <div class="hint-right">
               <span class="hint-line"></span>
@@ -266,7 +337,13 @@ onUnmounted(() => {
       </div>
       
       <div v-if="diaryList.length > 0" class="diary-history">
-        <h3 class="history-title">历史日记</h3>
+        <div class="history-header">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <h3 class="history-title">历史日记</h3>
+        </div>
         <div class="history-list">
           <button 
             v-for="date in diaryList" 
@@ -290,7 +367,7 @@ onUnmounted(() => {
                   <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                   <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
-                <span class="paper-title">我的日记</span>
+                <span class="paper-title">今日日报</span>
               </div>
               <div class="header-right">
                 <span class="paper-weekday">{{ new Date(selectedDate || new Date()).toLocaleDateString('zh-CN', { weekday: 'long' }) }}</span>
@@ -314,7 +391,7 @@ onUnmounted(() => {
           <line x1="16" y1="17" x2="8" y2="17"></line>
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
-        <p>点击上方按钮生成今日日记</p>
+        <p>点击上方按钮生成今日日报</p>
       </div>
     </div>
   </div>
@@ -652,6 +729,19 @@ onUnmounted(() => {
   margin-top: 0px;
   margin-bottom: 20px;
   padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: #6366f1;
+}
+
+.history-header svg {
+  stroke: #6366f1;
   background: #fff;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
@@ -660,7 +750,7 @@ onUnmounted(() => {
 .history-title {
   color: #1f2937;
   font-size: 16px;
-  margin: 0 0 16px 0;
+  margin: 0;
   font-weight: 600;
 }
 

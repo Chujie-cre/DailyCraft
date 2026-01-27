@@ -19,22 +19,27 @@ function handlePageChange(page: string) {
   }
 
   .radio-input {
-    --container_height: 672px;
+    --item_height: 96px;
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     border-radius: 0;
     padding: 10px;
-    gap: var(--padding);
+    gap: 0;
     background-color: none;
     color: #000000;
-    height: var(--container_height);
+    height: 100%;
     min-width: 110px;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     border: none;
     border-right: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .radio-input::-webkit-scrollbar {
+    display: none;
   }
 
   .radio-input label {
@@ -48,7 +53,9 @@ function handlePageChange(page: string) {
     z-index: 1;
     font-weight: 600;
     font-size: 14px;
-    height: 100%;
+    height: var(--item_height);
+    min-height: var(--item_height);
+    flex-shrink: 0;
   }
   .radio-input label svg {
     width: 30px;
@@ -58,9 +65,11 @@ function handlePageChange(page: string) {
   .selection {
     display: none;
     position: absolute;
-    height: calc(var(--container_height) / 7 - 12px);
+    height: calc(var(--item_height) - 12px);
     z-index: 0;
-    inset: 6px;
+    left: 6px;
+    right: 6px;
+    top: 16px;
     border-radius: 10px;
     transition: 0.15s ease;
   }
@@ -77,38 +86,43 @@ function handlePageChange(page: string) {
   }
 
   .radio-input label:nth-child(1):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 0 / 7));
-    background-color: #000000;
+    transform: translateY(calc(var(--item_height) * 0));
+    background-color: #e2629a;
   }
 
   .radio-input label:nth-child(2):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 1 / 7));
-    background-color: #1f9cf1;
+    transform: translateY(calc(var(--item_height) * 1));
+    background-color: #1efc8d;
   }
 
   .radio-input label:nth-child(3):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 2 / 7));
+    transform: translateY(calc(var(--item_height) * 2));
     background-color: #ff9801;
   }
 
   .radio-input label:nth-child(4):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 3 / 7));
+    transform: translateY(calc(var(--item_height) * 3));
     background-color: #8b5cf6;
   }
 
   .radio-input label:nth-child(5):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 4 / 7));
-    background-color: #6366f1;
+    transform: translateY(calc(var(--item_height) * 4));
+    background-color: #dd0fda;
   }
 
   .radio-input label:nth-child(6):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 5 / 7));
-    background-color: #e4a0e3;
+    transform: translateY(calc(var(--item_height) * 5));
+    background-color: #1f9cf1;
   }
 
   .radio-input label:nth-child(7):has(input:checked) ~ .selection {
-    transform: translateY(calc(var(--container_height) * 6 / 7));
-    background-color: #b7f089;
+    transform: translateY(calc(var(--item_height) * 6));
+    background-color: #7eec5c;
+  }
+
+  .radio-input label:nth-child(8):has(input:checked) ~ .selection {
+    transform: translateY(calc(var(--item_height) * 7));
+    background-color: #000000;
   }
 </style>
 
@@ -127,6 +141,15 @@ function handlePageChange(page: string) {
       </svg>
 
       <span>首页</span>
+    </label>
+    <label @click="handlePageChange('notes')">
+      <input value="value-notes" :checked="currentPage === 'notes'" name="value-radio" id="value-notes" type="radio" />
+      <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48">
+        <path fill="#ffd54f" d="M40,45H8c-1.1,0-2-0.9-2-2V5c0-1.1,0.9-2,2-2h24l10,10v30C42,44.1,41.1,45,40,45z"></path>
+        <path fill="#ffecb3" d="M38.5,14H29V4.5L38.5,14z"></path>
+        <path fill="#9e9e9e" d="M16 21H33V23H16zM16 25H33V27H16zM16 29H33V31H16zM16 33H25V35H16z"></path>
+      </svg>
+      <span>今天做什么？</span>
     </label>
     <label @click="handlePageChange('logs')">
       <input value="value-2" :checked="currentPage === 'logs'" name="value-radio" id="value-2" type="radio" />

@@ -3,10 +3,17 @@ use std::fs;
 use std::path::PathBuf;
 use crate::models::AppConfig;
 
-fn get_chat_history_path() -> PathBuf {
+/// 获取基础数据目录（data_dir的父目录，用于存放配置文件）
+fn get_base_data_dir() -> PathBuf {
     let config = AppConfig::load();
-    fs::create_dir_all(&config.data_dir).ok();
-    config.data_dir.join("chat_history.json")
+    // data_dir是data/data，我们需要data
+    config.data_dir.parent().unwrap_or(&config.data_dir).to_path_buf()
+}
+
+fn get_chat_history_path() -> PathBuf {
+    let base_dir = get_base_data_dir();
+    fs::create_dir_all(&base_dir).ok();
+    base_dir.join("chat_history.json")
 }
 
 #[tauri::command]
@@ -20,6 +27,28 @@ pub fn load_chat_history() -> Result<String, String> {
     let path = get_chat_history_path();
     if path.exists() {
         fs::read_to_string(&path).map_err(|e| format!("加载对话历史失败: {}", e))
+    } else {
+        Ok("[]".to_string())
+    }
+}
+
+fn get_notes_path() -> PathBuf {
+    let base_dir = get_base_data_dir();
+    fs::create_dir_all(&base_dir).ok();
+    base_dir.join("notes.json")
+}
+
+#[tauri::command]
+pub fn save_notes(notes: String) -> Result<(), String> {
+    let path = get_notes_path();
+    fs::write(&path, notes).map_err(|e| format!("保存笔记失败: {}", e))
+}
+
+#[tauri::command]
+pub fn load_notes() -> Result<String, String> {
+    let path = get_notes_path();
+    if path.exists() {
+        fs::read_to_string(&path).map_err(|e| format!("加载笔记失败: {}", e))
     } else {
         Ok("[]".to_string())
     }
@@ -65,9 +94,9 @@ struct ChatResponse {
 }
 
 fn get_ai_config_path() -> PathBuf {
-    let config = AppConfig::load();
-    fs::create_dir_all(&config.data_dir).ok();
-    config.data_dir.join("ai_config.json")
+    let base_dir = get_base_data_dir();
+    fs::create_dir_all(&base_dir).ok();
+    base_dir.join("ai_config.json")
 }
 
 #[tauri::command]
