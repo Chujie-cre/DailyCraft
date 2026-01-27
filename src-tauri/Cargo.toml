@@ -1,6 +1,6 @@
 [package]
 name = "dailycraft"
-version = "0.1.5"
+version = "0.1.8"
 description = "AI可视化日报"
 authors = ["you"]
 edition = "2024"
