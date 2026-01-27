@@ -9,6 +9,7 @@ import About from "./views/About.vue";
 import Diary from "./views/Diary.vue";
 import Screenshots from "./views/Screenshots.vue";
 import Chat from "./views/Chat.vue";
+import Notes from "./views/Notes.vue";
 import UpdateDialog from './components/UpdateDialog.vue';
 
 // 检测是否是独立更新窗口
@@ -249,6 +250,7 @@ onUnmounted(() => {
         <Diary v-else-if="currentPage === 'diary'" />
         <Screenshots v-else-if="currentPage === 'screenshots'" />
         <Chat v-else-if="currentPage === 'chat'" />
+        <Notes v-else-if="currentPage === 'notes'" />
         <Settings v-else-if="currentPage === 'settings'" />
         <About v-else-if="currentPage === 'about'" />
       </main>
