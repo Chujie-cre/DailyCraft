@@ -85,6 +85,8 @@ function switchSession(sessionId: string) {
     currentSessionId.value = sessionId;
     messages.value = session.messages;
     selectedDate.value = session.date;
+    // 切换后滚动到最新消息
+    scrollToBottom();
   }
 }
 
@@ -167,36 +169,57 @@ async function getDateData(date: string) {
       console.warn('获取输入统计失败:', e);
     }
 
+    // 智能摘要：按应用聚合使用情况
+    const appUsageMap = new Map<string, { count: number; titles: Set<string> }>();
+    for (const event of (events.app_focus || [])) {
+      const app = event.app || '未知应用';
+      if (!appUsageMap.has(app)) {
+        appUsageMap.set(app, { count: 0, titles: new Set() });
+      }
+      const usage = appUsageMap.get(app)!;
+      usage.count++;
+      if (event.window_title) {
+        usage.titles.add(event.window_title.substring(0, 50));
+      }
+    }
+    
+    // 保留所有应用（100%）
+    const appUsageSummary = Array.from(appUsageMap.entries())
+      .map(([app, data]) => ({
+        app,
+        focus_count: data.count,
+        sample_titles: Array.from(data.titles).slice(0, 3)
+      }))
+      .sort((a, b) => b.focus_count - a.focus_count);
+    
+    // OCR摘要：按比例采样（取20%，无上限），均匀采样覆盖全天
+    const ocrSampleCount = Math.max(1, Math.ceil(ocrData.length * 0.2));
+    const ocrStep = Math.max(1, Math.floor(ocrData.length / ocrSampleCount));
+    const sampledOcr: any[] = [];
+    for (let i = 0; i < ocrData.length && sampledOcr.length < ocrSampleCount; i += ocrStep) {
+      sampledOcr.push(ocrData[i]);
+    }
+    const ocrSummary = sampledOcr.map(item => ({
+      time: item.timestamp?.substring(11, 16) || '',
+      app: item.app_name || '',
+      text: (item.text || '').substring(0, 200)
+    }));
+
     return {
       date,
-      activities: {
-        app_focus: events.app_focus || [],
-        keyboard: events.keyboard || [],
-        mouse: events.mouse || [],
-        idle: events.idle || []
-      },
-      ocr_texts: ocrData.map(item => ({
-        time: item.timestamp,
-        app: item.app_name,
-        content: item.text
-      })),
-      screenshots: {
-        count: screenshots.length,
-        files: screenshots.slice(0, 20)
-      },
-      input_stats: {
+      app_usage: appUsageSummary,
+      input_summary: {
         total_keystrokes: inputStats.key_count,
         total_clicks: inputStats.click_count,
-        mouse_distance_px: inputStats.mouse_distance,
-        idle_seconds: inputStats.idle_seconds
+        mouse_distance_meters: Math.round(inputStats.mouse_distance / 1000),
+        idle_minutes: Math.round(inputStats.idle_seconds / 60)
       },
-      summary: {
-        app_count: events.app_focus?.length || 0,
-        keyboard_events: events.keyboard?.length || 0,
-        mouse_events: events.mouse?.length || 0,
-        idle_events: events.idle?.length || 0,
+      ocr_highlights: ocrSummary,
+      statistics: {
+        total_app_switches: (events.app_focus || []).length,
+        unique_apps_used: appUsageMap.size,
         screenshot_count: screenshots.length,
-        ocr_count: ocrData.length
+        idle_periods: (events.idle || []).length
       }
     };
   } catch (e) {
@@ -227,6 +250,9 @@ async function sendMessage() {
     content: userMessage,
     timestamp: new Date().toLocaleTimeString()
   });
+  
+  // 立即保存用户消息，防止丢失
+  updateCurrentSession();
 
   await scrollToBottom();
   isLoading.value = true;
@@ -246,21 +272,20 @@ async function sendMessage() {
     const dateData = await getDateData(selectedDate.value);
     
     // 构建系统提示
-    const systemPrompt = `你是用户的AI助手，可以根据用户的电脑活动数据回答问题。
+    const systemPrompt = `你是用户的AI助手，可以根据用户的电脑活动摘要数据回答问题。
 
 当前查询日期: ${selectedDate.value}
 
-用户的活动数据:
+用户的活动摘要数据:
 ${JSON.stringify(dateData, null, 2)}
 
 数据说明:
-- activities: 应用使用记录（app_focus应用切换、keyboard键盘、mouse鼠标、idle空闲）
-- ocr_texts: 截图OCR识别的文字内容
-- screenshots: 截图统计
-- input_stats: 输入统计
-- summary: 数据汇总
+- app_usage: 应用使用统计（按使用次数排序，包含应用名、焦点次数、窗口标题样本）
+- input_summary: 输入统计（按键次数、点击次数、鼠标移动距离(米)、空闲分钟数）
+- ocr_highlights: OCR识别的文字摘要
+- statistics: 汇总统计
 
-请根据以上数据回答用户的问题。用第一人称"你"来称呼用户。回答要简洁准确。`;
+请根据以上摘要数据回答用户的问题。用第一人称"你"来称呼用户。回答要简洁准确。`;
 
     // 调用流式AI
     await aiApi.chatStream(systemPrompt, userMessage);
@@ -318,6 +343,8 @@ onMounted(async () => {
     createNewSession();
   }
   await setupEventListeners();
+  // 自动滚动到最新消息
+  scrollToBottom();
 });
 
 onUnmounted(() => {
@@ -651,6 +678,7 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
   max-width: 80%;
+  min-width: 0;
 }
 
 .message.user {
@@ -686,6 +714,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .message-text {
@@ -693,6 +723,9 @@ onUnmounted(() => {
   border-radius: 16px;
   line-height: 1.5;
   white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .message.user .message-text {
@@ -814,5 +847,30 @@ onUnmounted(() => {
 .send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* 响应式布局 */
+@media (max-width: 800px) {
+  .sessions-sidebar {
+    width: 180px;
+    min-width: 180px;
+  }
+}
+
+@media (max-width: 600px) {
+  .chat-page {
+    flex-direction: column;
+  }
+  .sessions-sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .chat-main {
+    height: calc(100vh - 260px);
+  }
 }
 </style>

@@ -22,32 +22,29 @@ let unlistenChunk: UnlistenFn | null = null;
 let unlistenComplete: UnlistenFn | null = null;
 let unlistenError: UnlistenFn | null = null;
 
-const defaultPrompt = `你就是我，正在写今天的日报，请根据以下我今天的电脑活动数据，帮我生成一篇日报。
+const defaultPrompt = `你就是我，正在写今天的日报，请根据以下我今天的电脑活动摘要数据，帮我生成一篇日报。
 
 数据说明：
 - date: 日期
-- activities: 应用使用记录（app_focus应用切换、keyboard键盘、mouse鼠标、idle空闲）
-- ocr_texts: 截图OCR识别的文字内容，反映我具体在做什么
-- screenshots: 截图统计
-- input_stats: 输入统计（按键次数、点击次数、鼠标移动距离、空闲时间）
-- summary: 数据汇总
+- app_usage: 应用使用统计（按使用次数排序，包含应用名、焦点次数、窗口标题样本）
+- input_summary: 输入统计（按键次数、点击次数、鼠标移动距离(米)、空闲分钟数）
+- ocr_highlights: OCR识别的文字摘要（时间、应用、文字片段）
+- statistics: 汇总统计（应用切换次数、使用的应用数、截图数、空闲次数）
 
 要求：
 1. 一定以第一人称"我"来写，你就是我，我就是你
-2. 根据应用使用和OCR内容推断我做了什么工作
-3. 按时间顺序组织，突出重点工作内容
+2. 根据应用使用统计和OCR内容推断我做了什么工作
+3. 突出重点工作内容
 4. 语言自然流畅，像真实的日记
 5. 结合输入统计分析我的工作效率
-6. 字数不限
-7. 使用Markdown格式，语法丰富
+6. 字数控制在500-1000字
+7. 使用Markdown格式
 
 输出格式：
 # {日期} 日报
 
 ## 今天我做了什么
 
-## 工作完成度
-  按todolist来展现
 ## 效率分析
 
 ## 小结
@@ -135,37 +132,63 @@ async function startGeneration() {
       console.warn('获取输入统计失败:', e);
     }
     
-    // 组合全部数据
+    // 智能摘要数据，避免token爆炸
+    // 1. 统计应用使用情况（按应用名聚合）
+    const appUsageMap = new Map<string, { count: number; titles: Set<string> }>();
+    for (const event of (events.app_focus || [])) {
+      const app = event.app || '未知应用';
+      if (!appUsageMap.has(app)) {
+        appUsageMap.set(app, { count: 0, titles: new Set() });
+      }
+      const usage = appUsageMap.get(app)!;
+      usage.count++;
+      if (event.window_title) {
+        usage.titles.add(event.window_title.substring(0, 50)); // 限制标题长度
+      }
+    }
+    
+    // 转换为数组并按使用次数排序，保留所有应用（100%）
+    const appUsageSummary = Array.from(appUsageMap.entries())
+      .map(([app, data]) => ({
+        app,
+        focus_count: data.count,
+        sample_titles: Array.from(data.titles).slice(0, 3)
+      }))
+      .sort((a, b) => b.focus_count - a.focus_count);
+    
+    // 2. OCR文本摘要：取20%的记录（无上限），均匀采样覆盖全天
+    const ocrSampleCount = Math.max(1, Math.ceil(ocrData.length * 0.2));
+    const ocrStep = Math.max(1, Math.floor(ocrData.length / ocrSampleCount));
+    const sampledOcr: any[] = [];
+    for (let i = 0; i < ocrData.length && sampledOcr.length < ocrSampleCount; i += ocrStep) {
+      sampledOcr.push(ocrData[i]);
+    }
+    const ocrSummary = sampledOcr.map(item => ({
+      time: item.timestamp?.substring(11, 16) || '',
+      app: item.app_name || '',
+      text: (item.text || '').substring(0, 200)
+    }));
+    
+    // 3. 计算空闲时间统计
+    const idleEvents = events.idle || [];
+    const totalIdleMinutes = Math.round(inputStats.idle_seconds / 60);
+    
+    // 组合精简后的数据
     const combinedData = {
       date: today,
-      activities: {
-        app_focus: events.app_focus || [],
-        keyboard: events.keyboard || [],
-        mouse: events.mouse || [],
-        idle: events.idle || []
-      },
-      ocr_texts: ocrData.map(item => ({
-        time: item.timestamp,
-        app: item.app_name,
-        content: item.text
-      })),
-      screenshots: {
-        count: screenshots.length,
-        files: screenshots.slice(0, 20) // 限制数量避免过长
-      },
-      input_stats: {
+      app_usage: appUsageSummary,
+      input_summary: {
         total_keystrokes: inputStats.key_count,
         total_clicks: inputStats.click_count,
-        mouse_distance_px: inputStats.mouse_distance,
-        idle_seconds: inputStats.idle_seconds
+        mouse_distance_meters: Math.round(inputStats.mouse_distance / 1000), // 转换为米
+        idle_minutes: totalIdleMinutes
       },
-      summary: {
-        app_count: events.app_focus?.length || 0,
-        keyboard_events: events.keyboard?.length || 0,
-        mouse_events: events.mouse?.length || 0,
-        idle_events: events.idle?.length || 0,
+      ocr_highlights: ocrSummary,
+      statistics: {
+        total_app_switches: (events.app_focus || []).length,
+        unique_apps_used: appUsageMap.size,
         screenshot_count: screenshots.length,
-        ocr_count: ocrData.length
+        idle_periods: idleEvents.length
       }
     };
     
@@ -290,7 +313,7 @@ onUnmounted(() => {
                   <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                   <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
-                <span class="paper-title">我的日记</span>
+                <span class="paper-title">今日日报</span>
               </div>
               <div class="header-right">
                 <span class="paper-weekday">{{ new Date(selectedDate || new Date()).toLocaleDateString('zh-CN', { weekday: 'long' }) }}</span>
