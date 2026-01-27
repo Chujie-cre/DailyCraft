@@ -5,6 +5,39 @@ import { invoke } from '@tauri-apps/api/core';
 import { activityApi } from '@/api/activity';
 import { aiApi } from '@/api/ai';
 
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 获取指定日期的笔记内容
+async function getNotesContentByDate(targetDate: string): Promise<string> {
+  try {
+    const data = await invoke<string>('load_notes');
+    if (!data) return '';
+    
+    const notes: Note[] = JSON.parse(data);
+    
+    const dateNotes = notes.filter(n => {
+      const noteDate = new Date(n.createdAt).toISOString().split('T')[0];
+      return noteDate === targetDate;
+    });
+    
+    if (dateNotes.length === 0) return '';
+    
+    return dateNotes.map(n => {
+      const textContent = n.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      return `【${n.title}】${textContent}`;
+    }).join('\n\n');
+  } catch (e) {
+    console.warn('获取笔记失败:', e);
+    return '';
+  }
+}
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -271,8 +304,16 @@ async function sendMessage() {
     // 获取选中日期的数据
     const dateData = await getDateData(selectedDate.value);
     
+    // 获取选中日期的笔记内容
+    let dateNotes = '';
+    try {
+      dateNotes = await getNotesContentByDate(selectedDate.value);
+    } catch (e) {
+      console.warn('获取笔记失败:', e);
+    }
+    
     // 构建系统提示
-    const systemPrompt = `你是用户的AI助手，可以根据用户的电脑活动摘要数据回答问题。
+    let systemPrompt = `你是用户的AI助手，可以根据用户的电脑活动摘要数据回答问题。
 
 当前查询日期: ${selectedDate.value}
 
@@ -283,9 +324,19 @@ ${JSON.stringify(dateData, null, 2)}
 - app_usage: 应用使用统计（按使用次数排序，包含应用名、焦点次数、窗口标题样本）
 - input_summary: 输入统计（按键次数、点击次数、鼠标移动距离(米)、空闲分钟数）
 - ocr_highlights: OCR识别的文字摘要
-- statistics: 汇总统计
+- statistics: 汇总统计`;
 
-请根据以上摘要数据回答用户的问题。用第一人称"你"来称呼用户。回答要简洁准确。`;
+    // 如果有该日期的笔记，添加到提示中
+    if (dateNotes) {
+      systemPrompt += `
+
+用户${selectedDate.value}的记事本笔记:
+${dateNotes}`;
+    }
+
+    systemPrompt += `
+
+请根据以上数据回答用户的问题。用第一人称"你"来称呼用户。回答要简洁准确。`;
 
     // 调用流式AI
     await aiApi.chatStream(systemPrompt, userMessage);

@@ -1,9 +1,44 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { marked } from 'marked';
 import { activityApi } from '@/api/activity';
 import { aiApi } from '@/api/ai';
+
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 获取今天的笔记内容
+async function getTodayNotesContent(): Promise<string> {
+  try {
+    const data = await invoke<string>('load_notes');
+    if (!data) return '';
+    
+    const notes: Note[] = JSON.parse(data);
+    const today = new Date().toISOString().split('T')[0];
+    
+    const todayNotes = notes.filter(n => {
+      const noteDate = new Date(n.createdAt).toISOString().split('T')[0];
+      return noteDate === today;
+    });
+    
+    if (todayNotes.length === 0) return '';
+    
+    return todayNotes.map(n => {
+      const textContent = n.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      return `【${n.title}】${textContent}`;
+    }).join('\n\n');
+  } catch (e) {
+    console.warn('获取笔记失败:', e);
+    return '';
+  }
+}
 
 const isGenerating = ref(false);
 const diary = ref('');
@@ -34,7 +69,7 @@ const defaultPrompt = `你就是我，正在写今天的日报，请根据以下
 要求：
 1. 一定以第一人称"我"来写，你就是我，我就是你
 2. 根据应用使用统计和OCR内容推断我做了什么工作
-3. 突出重点工作内容
+3. 突出重点工作内容，审查记事本的内容是否有完成！！！
 4. 语言自然流畅，像真实的日记
 5. 结合输入统计分析我的工作效率
 6. 字数控制在500-1000字
@@ -173,8 +208,16 @@ async function startGeneration() {
     const idleEvents = events.idle || [];
     const totalIdleMinutes = Math.round(inputStats.idle_seconds / 60);
     
+    // 获取今天的笔记内容
+    let todayNotes = '';
+    try {
+      todayNotes = await getTodayNotesContent();
+    } catch (e) {
+      console.warn('获取笔记失败:', e);
+    }
+    
     // 组合精简后的数据
-    const combinedData = {
+    const combinedData: any = {
       date: today,
       app_usage: appUsageSummary,
       input_summary: {
@@ -191,6 +234,11 @@ async function startGeneration() {
         idle_periods: idleEvents.length
       }
     };
+    
+    // 如果有今天的笔记，添加到数据中
+    if (todayNotes) {
+      combinedData.user_notes = todayNotes;
+    }
     
     const activitiesJson = JSON.stringify(combinedData, null, 2);
     isGenerating.value = true;
@@ -256,11 +304,11 @@ onUnmounted(() => {
               <span v-else class="loading-spinner"></span>
             </div>
           </div>
-          <span class="btn-text">{{ isGenerating ? '生成中...' : '生成今日日记' }}</span>
+          <span class="btn-text">{{ isGenerating ? '生成中...' : '生成今日日报' }}</span>
           <div class="hover-hints">
             <div class="hint-left">
               <span class="hint-line"></span>
-              <span class="hint-text">AI日记生成</span>
+              <span class="hint-text">AI日报生成</span>
             </div>
             <div class="hint-right">
               <span class="hint-line"></span>
@@ -289,7 +337,13 @@ onUnmounted(() => {
       </div>
       
       <div v-if="diaryList.length > 0" class="diary-history">
-        <h3 class="history-title">历史日记</h3>
+        <div class="history-header">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <h3 class="history-title">历史日记</h3>
+        </div>
         <div class="history-list">
           <button 
             v-for="date in diaryList" 
@@ -337,7 +391,7 @@ onUnmounted(() => {
           <line x1="16" y1="17" x2="8" y2="17"></line>
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
-        <p>点击上方按钮生成今日日记</p>
+        <p>点击上方按钮生成今日日报</p>
       </div>
     </div>
   </div>
@@ -675,6 +729,19 @@ onUnmounted(() => {
   margin-top: 0px;
   margin-bottom: 20px;
   padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: #6366f1;
+}
+
+.history-header svg {
+  stroke: #6366f1;
   background: #fff;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
@@ -683,7 +750,7 @@ onUnmounted(() => {
 .history-title {
   color: #1f2937;
   font-size: 16px;
-  margin: 0 0 16px 0;
+  margin: 0;
   font-weight: 600;
 }
 
