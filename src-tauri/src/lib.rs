@@ -100,6 +100,8 @@ pub fn run() {
             ai_chat_stream,
             save_chat_history,
             load_chat_history,
+            save_notes,
+            load_notes,
             get_diary_state,
             is_diary_generating,
             start_diary_generation,

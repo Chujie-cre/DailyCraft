@@ -37,9 +37,16 @@ pub struct UpdatePrefs {
     pub remind_after: Option<String>,
 }
 
-fn get_update_prefs_path() -> PathBuf {
+/// 获取基础数据目录（data_dir的父目录，用于存放配置文件）
+fn get_base_data_dir() -> PathBuf {
     let config = AppConfig::load();
-    config.data_dir.join("update_prefs.json")
+    // data_dir是data/data，我们需要data
+    config.data_dir.parent().unwrap_or(&config.data_dir).to_path_buf()
+}
+
+fn get_update_prefs_path() -> PathBuf {
+    let base_dir = get_base_data_dir();
+    base_dir.join("update_prefs.json")
 }
 
 fn load_update_prefs() -> UpdatePrefs {
@@ -63,27 +70,71 @@ fn save_update_prefs(prefs: &UpdatePrefs) -> Result<(), String> {
     Ok(())
 }
 
-fn parse_version(version: &str) -> Vec<u32> {
-    version
-        .trim_start_matches('v')
+/// 解析版本号，返回 (数字部分, 预发布类型权重, 预发布版本号)
+/// 类型权重: 无后缀=100, rc=3, beta=2, alpha=1
+fn parse_version(version: &str) -> (Vec<u32>, i32, u32) {
+    let v = version.trim_start_matches('v');
+    let parts: Vec<&str> = v.splitn(2, '-').collect();
+    
+    let numbers: Vec<u32> = parts[0]
         .split('.')
         .filter_map(|s| s.parse().ok())
-        .collect()
+        .collect();
+    
+    // 解析预发布标签
+    let (prerelease_type, prerelease_num) = if parts.len() > 1 {
+        let pre = parts[1].to_lowercase();
+        // 提取类型和版本号，如 "beta-1" -> (beta, 1), "beta.2" -> (beta, 2)
+        let type_weight = if pre.starts_with("rc") {
+            3
+        } else if pre.starts_with("beta") {
+            2
+        } else if pre.starts_with("alpha") {
+            1
+        } else {
+            0
+        };
+        
+        // 提取预发布版本号
+        let num: u32 = pre
+            .chars()
+            .filter(|c| c.is_ascii_digit())
+            .collect::<String>()
+            .parse()
+            .unwrap_or(0);
+        
+        (type_weight, num)
+    } else {
+        (100, 0)  // 正式版
+    };
+    
+    (numbers, prerelease_type, prerelease_num)
 }
 
 fn compare_versions(current: &str, latest: &str) -> std::cmp::Ordering {
-    let current_parts = parse_version(current);
-    let latest_parts = parse_version(latest);
+    let (current_nums, current_type, current_pre_num) = parse_version(current);
+    let (latest_nums, latest_type, latest_pre_num) = parse_version(latest);
     
-    for i in 0..std::cmp::max(current_parts.len(), latest_parts.len()) {
-        let c = current_parts.get(i).unwrap_or(&0);
-        let l = latest_parts.get(i).unwrap_or(&0);
+    // 1. 先比较数字部分 (0.2.1 vs 0.2.0)
+    let max_len = std::cmp::max(current_nums.len(), latest_nums.len());
+    for i in 0..max_len {
+        let c = current_nums.get(i).unwrap_or(&0);
+        let l = latest_nums.get(i).unwrap_or(&0);
         match c.cmp(l) {
             std::cmp::Ordering::Equal => continue,
             other => return other,
         }
     }
-    std::cmp::Ordering::Equal
+    
+    // 2. 数字相同，比较预发布类型权重
+    // 正式版(100) > rc(3) > beta(2) > alpha(1)
+    match current_type.cmp(&latest_type) {
+        std::cmp::Ordering::Equal => {
+            // 3. 类型也相同，比较预发布版本号 (beta-1 vs beta-2)
+            current_pre_num.cmp(&latest_pre_num)
+        }
+        other => other,
+    }
 }
 
 #[tauri::command]
@@ -265,8 +316,8 @@ pub async fn download_update(
     download_url: String,
     version: String
 ) -> Result<String, String> {
-    let config = AppConfig::load();
-    let download_dir = config.data_dir.join("downloads");
+    let base_dir = get_base_data_dir();
+    let download_dir = base_dir.join("downloads");
     fs::create_dir_all(&download_dir).map_err(|e| format!("创建下载目录失败: {}", e))?;
     
     let filename = format!("dailycraft_{}_x64-setup.exe", version);

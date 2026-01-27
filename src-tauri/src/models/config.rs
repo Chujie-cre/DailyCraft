@@ -30,6 +30,7 @@ impl Default for AppConfig {
             data_dir: dirs::data_local_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
                 .join("DailyCraft")
+                .join("data")
                 .join("data"),
             screenshot_blacklist: vec![
                 "1Password".to_string(),
