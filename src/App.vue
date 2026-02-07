@@ -11,13 +11,20 @@ import Screenshots from "./views/Screenshots.vue";
 import Chat from "./views/Chat.vue";
 import Notes from "./views/Notes.vue";
 import UpdateDialog from './components/UpdateDialog.vue';
+import PetOverlay from './deskpet/PetOverlay.vue';
 
 // 检测是否是独立更新窗口
 const isUpdateWindow = computed(() => {
   return window.location.search.includes('current=');
 });
 
+// 检测是否是桌宠窗口
+const isDeskpetWindow = computed(() => {
+  return window.location.pathname === '/deskpet';
+});
+
 import { activityApi, type AppConfig } from './api/activity';
+import { deskpetApi } from './api/deskpet';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { updateApi, type ReleaseInfo } from './api/update';
 
@@ -26,6 +33,11 @@ const currentPage = ref('home');
 // 如果是更新窗口，不执行主窗口逻辑
 if (isUpdateWindow.value) {
   // 更新窗口不需要主窗口的逻辑
+}
+
+// 如果是桌宠窗口，不执行主窗口逻辑
+if (isDeskpetWindow.value) {
+  // 桌宠窗口不需要主窗口的逻辑
 }
 
 // 更新检查相关
@@ -200,6 +212,9 @@ function restartTracking() {
 }
 
 onMounted(async () => {
+  // 桌宠窗口和更新窗口都不应执行主窗口的追踪逻辑
+  if (isDeskpetWindow.value || isUpdateWindow.value) return;
+
   // 先加载配置
   await loadConfig();
   await activityApi.initTodayStorage();
@@ -215,6 +230,13 @@ onMounted(async () => {
   
   // 启动时检查更新
   checkForUpdate();
+
+  // 启动桌宠窗口
+  try {
+    await deskpetApi.createPetWindow();
+  } catch (e) {
+    console.error('启动桌宠失败:', e);
+  }
 });
 
 onUnmounted(() => {
@@ -234,8 +256,11 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- 桌宠透明窗口 -->
+  <PetOverlay v-if="isDeskpetWindow" />
+
   <!-- 独立更新窗口 -->
-  <UpdateDialog v-if="isUpdateWindow" />
+  <UpdateDialog v-else-if="isUpdateWindow" />
   
   <!-- 主应用窗口 -->
   <div v-else class="app">
