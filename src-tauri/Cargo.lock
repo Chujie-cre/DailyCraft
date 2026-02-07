@@ -3,6 +3,34 @@
 version = 4
 
 [[package]]
+name = "PawPrint"
+version = "0.2.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "dirs 5.0.1",
+ "futures-util",
+ "image 0.25.9",
+ "once_cell",
+ "rdev",
+ "reqwest",
+ "rusqlite",
+ "screenshots",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+ "thiserror 1.0.69",
+ "tokio",
+ "urlencoding",
+ "uuid",
+ "windows 0.58.0",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -889,34 +917,6 @@ checksum = "32a2785755761f3ddc1492979ce1e48d2c00d09311c39e4466429188f3dd6501"
 dependencies = [
  "quote",
  "syn 2.0.114",
-]
-
-[[package]]
-name = "dailycraft"
-version = "0.1.8"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "dirs 5.0.1",
- "futures-util",
- "image 0.25.9",
- "once_cell",
- "rdev",
- "reqwest",
- "rusqlite",
- "screenshots",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-dialog",
- "tauri-plugin-opener",
- "thiserror 1.0.69",
- "tokio",
- "urlencoding",
- "uuid",
- "windows 0.58.0",
 ]
 
 [[package]]

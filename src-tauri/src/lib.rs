@@ -7,6 +7,7 @@ use commands::system::*;
 use commands::ai::*;
 use commands::diary::*;
 use commands::update::*;
+use commands::deskpet::*;
 use tauri::{
     Manager,
     menu::{Menu, MenuItem},
@@ -117,7 +118,11 @@ pub fn run() {
             get_current_version,
             open_update_window,
             download_update,
-            install_update
+            install_update,
+            get_mouse_position,
+            create_pet_window,
+            close_pet_window,
+            set_pet_ignore_cursor
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
