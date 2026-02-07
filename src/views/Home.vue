@@ -280,7 +280,7 @@ onUnmounted(() => {
             <img src="/icon.png" alt="DailyCraft" />
           </div>
           <div class="welcome-text">
-            <h2>欢迎使用 DailyCraft</h2>
+            <h2>欢迎使用 PawPrint</h2>
             <p class="welcome-desc">
               DailyCraft 是一款 AI 可视化日志分析软件，通过监控您的电脑操作，以可拖拽小卡片的形式记录每个时间段的活动数据，并在一天结束后由 AI 自动生成日记总结。
             </p>

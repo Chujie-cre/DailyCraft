@@ -110,7 +110,7 @@ async function submitContact() {
     <div class="about-content">
       <div class="about-header">
         <img src="/icon.png" alt="DailyCraft" class="about-icon" />
-        <h1 class="about-title">DailyCraft</h1>
+        <h1 class="about-title">PawPrint</h1>
         <div class="version-badge">
           <span class="version-text">版本 {{ version }}</span>
         </div>

@@ -1,4 +1,4 @@
-# DailyCraft 后端架构设计
+# PawPrint 后端架构设计
 
 ## 技术栈
 
@@ -201,7 +201,7 @@ pub struct SyncManager {
 如需搭建独立后端服务，建议使用Rust或Node.js：
 
 ```
-dailycraft-server/
+PawPrint-server/
 ├── src/
 │   ├── main.rs
 │   ├── routes/
