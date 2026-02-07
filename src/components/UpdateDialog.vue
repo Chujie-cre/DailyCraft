@@ -186,7 +186,7 @@ async function handleIgnore() {
       <div class="dialog-header">
         <div class="header-title-row">
           <img src="/icon.png" alt="DailyCraft" class="header-logo" />
-          <h2>DailyCraft · 应用更新</h2>
+          <h2>PawPrint · 应用更新</h2>
         </div>
         <p class="version-subtitle">发现新版本</p>
         <p class="version-info">
@@ -269,7 +269,7 @@ async function handleIgnore() {
         <div class="dialog-header">
           <div class="header-title-row">
             <img src="/icon.png" alt="DailyCraft" class="header-logo" />
-            <h2>DailyCraft · 应用更新</h2>
+            <h2>PawPrint · 应用更新</h2>
           </div>
           <p class="version-subtitle">发现新版本</p>
           <p class="version-info">

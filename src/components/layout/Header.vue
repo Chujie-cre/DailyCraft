@@ -2,7 +2,7 @@
   <header class="header">
     <div class="header-left">
       <img src="/icon.png" alt="DailyCraft" class="logo-icon" />
-      <h1 class="logo">DailyCraft</h1>
+      <h1 class="logo">PawPrint</h1>
     </div>
     <div class="header-center">
       <span class="time-badge">
